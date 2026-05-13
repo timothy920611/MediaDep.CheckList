@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>確認表單 Check List｜互動版</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :root {
+      --bg: #0c0b09;
+      --surface: #141310;
+      --card: #1a1815;
+      --border: #2c2922;
+      --accent: #c8a96e;
+      --accent2: #e8d4a8;
+      --accent3: #8a6a3a;
+      --text: #ede7da;
+      --muted: #958b7c;
+      --dim: #3a342c;
+      --ok: #77c28a;
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: radial-gradient(circle at top left, rgba(200,169,110,.16), transparent 32%), var(--bg);
+      color: var(--text);
+      font-family: 'Noto Serif TC', serif;
+    }
+    .app { height: 100%; display: flex; flex-direction: column; }
+    .topbar {
+      height: 58px; flex: 0 0 auto; display: flex; align-items: center; gap: 12px;
+      padding: 10px 16px; background: rgba(20,19,16,.92); border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(14px);
+    }
+    .badge {
+      width: 36px; height: 36px; display: grid; place-items: center; border-radius: 8px;
+      background: var(--accent); color: #0c0b09; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 11px;
+    }
+    .heading { flex: 1; min-width: 0; }
+    .heading strong { display: block; font-size: 14px; letter-spacing: .05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .heading span { display: block; margin-top: 2px; color: var(--muted); font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: .08em; }
+    .actions { display: flex; gap: 8px; }
+    button {
+      border: 1px solid var(--border); color: var(--text); background: var(--dim); border-radius: 8px;
+      padding: 9px 11px; font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: .06em; cursor: pointer;
+    }
+    button:hover { border-color: var(--accent); color: var(--accent2); background: rgba(200,169,110,.10); }
+    .progress-wrap { height: 3px; background: #1f1c17; }
+    .progress { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .25s ease; }
+    .slides {
+      flex: 1; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scroll-behavior: smooth;
+      scrollbar-width: none;
+    }
+    .slides::-webkit-scrollbar { display: none; }
+    .slide {
+      min-width: 100%; height: 100%; scroll-snap-align: start; display: grid; place-items: center; padding: 22px;
+    }
+    .panel {
+      width: min(880px, 100%); max-height: 100%; overflow-y: auto; border: 1px solid var(--border); border-radius: 20px;
+      background: linear-gradient(180deg, rgba(26,24,21,.94), rgba(20,19,16,.96)); box-shadow: 0 24px 80px rgba(0,0,0,.35);
+      padding: clamp(20px, 4vw, 34px);
+    }
+    .kicker { color: var(--accent); font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin: 8px 0 10px; font-size: clamp(24px, 5vw, 42px); line-height: 1.25; letter-spacing: .02em; }
+    .meta { color: var(--muted); font-size: 13px; line-height: 1.8; margin-bottom: 20px; }
+    .check-list { display: flex; flex-direction: column; gap: 12px; }
+    .check-item {
+      display: grid; grid-template-columns: 30px 1fr; gap: 12px; align-items: start; padding: 14px 14px;
+      border: 1px solid var(--border); border-radius: 14px; background: rgba(58,52,44,.35); cursor: pointer;
+      transition: transform .18s ease, border-color .18s ease, background .18s ease, opacity .18s ease;
+    }
+    .check-item:hover { transform: translateX(4px); border-color: var(--accent3); background: rgba(200,169,110,.08); }
+    .check-item input { width: 22px; height: 22px; accent-color: var(--accent); cursor: pointer; margin-top: 1px; }
+    .check-item span { font-size: 16px; line-height: 1.75; }
+    .check-item.done { border-color: rgba(119,194,138,.45); background: rgba(119,194,138,.08); opacity: .78; }
+    .check-item.done span { text-decoration: line-through; color: var(--muted); }
+    .section-footer {
+      display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--border);
+      color: var(--muted); font-family: 'Space Mono', monospace; font-size: 11px;
+    }
+    .pill { border: 1px solid var(--border); border-radius: 999px; padding: 7px 10px; background: rgba(12,11,9,.35); }
+    .complete { color: var(--ok); }
+    .finish-card { text-align: center; }
+    .finish-card h1 { font-size: clamp(32px, 8vw, 56px); }
+    .finish-card p { color: var(--muted); line-height: 1.9; }
+    @media (max-width: 720px) {
+      .topbar { height: auto; align-items: flex-start; }
+      .actions { flex-direction: column; }
+      button { padding: 8px 9px; }
+      .slides { flex-direction: column; overflow-x: hidden; overflow-y: auto; scroll-snap-type: y mandatory; }
+      .slide { min-width: 100%; min-height: 100%; height: auto; }
+      .check-item span { font-size: 15px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="badge">CL</div>
+      <div class="heading">
+        <strong>確認表單 Check List｜互動版</strong>
+        <span id="progressText">0 / 31 CHECKED</span>
+      </div>
+      <div class="actions">
+        <button id="prevBtn" type="button">上一區</button>
+        <button id="nextBtn" type="button">下一區</button>
+        <button id="resetBtn" type="button">重設</button>
+      </div>
+    </header>
+    <div class="progress-wrap"><div class="progress" id="progress"></div></div>
+    <section class="slides" id="slides" aria-label="互動式 Check List 區塊"></section>
+  </main>
+
+  <script>
+    const sections = [
+  {
+    "title": "聚會前｜環境與設備啟動",
+    "tag": "Before Meeting",
+    "items": [
+      "消毒",
+      "開啟電源（牆壁上）",
+      "下到上依序開啟（擴大機 ➡️ 混音器 ➡️ 無線麥克風主機 ➡️ 電腦）"
+    ]
+  },
+  {
+    "title": "聚會前｜下載與準備多媒體",
+    "tag": "Media Prep",
+    "items": [
+      "在 JW Library 下載《傳道與生活聚會手冊》或《守望台》文章中，聚會上需要播放的多媒體檔案。",
+      "確認已下載公眾演講的講者選擇的歌曲。",
+      "如果多媒體列表是從 JW Hub 下載，開啟多媒體播放列表，下載或導入列表裡的所有視頻。",
+      "如果使用個人播放列表，建立或導入播放列表，並確認所有視頻都已下載。"
+    ]
+  },
+  {
+    "title": "聚會前｜播放測試與音訊確認",
+    "tag": "Playback Test",
+    "items": [
+      "嘗試播放在聚會中使用的每個圖片和視頻（在出版物或播放列表中），確保每個下載的項目都可以正常播放。",
+      "跟每位講者確定在什麼時候播放圖片和視頻。",
+      "測試所有麥克風，確定音質、音量（與負責講台的弟兄一起）",
+      "確認走道間以及廁所是否有聲音"
+    ]
+  },
+  {
+    "title": "聚會前｜講台弟兄",
+    "tag": "Stage Brother",
+    "items": [
+      "請最後確認無線麥克風電量",
+      "請留意示範麥克風擺放方向",
+      "與公眾演講講者確認麥克風高度",
+      "預先調好誦讀弟兄麥克風"
+    ]
+  },
+  {
+    "title": "聚會前｜麥克風傳遞員",
+    "tag": "Mic Runner",
+    "items": [
+      "請最後確認無線麥克風電量"
+    ]
+  },
+  {
+    "title": "聚會前｜Zoom 與線上參與者",
+    "tag": "Zoom Check",
+    "items": [
+      "開啟線上會議，讓需要的人加入",
+      "確定在 Zoom 裡，從媒體播放器電腦到混音器的音頻連接是設置正確的，而且運行正常。",
+      "確定在 Zoom 裡選取了正確的攝影設備，而且運行正常。不要傳送講台的影像，要等到聚會快要開始才傳送。不應該播放王國聚會所裡聽眾的影像。",
+      "確認有節目的人都到了。如果不在現場，確認是否在線上",
+      "確定每個參與節目的人，他們的影像畫面適當，而且麥克風的聲音良好。如果可能，就進行音頻測試，但測試的方式不要打斷聚會所會堂內的談話。",
+      "在聚會開始前的1分鐘，視頻控制員應該使所有視頻會議的參與人員靜音。他應該取消「允許參會者自我解除（容許與會者自行解除）靜音」這個選擇。對於混合聚會，聚會進行期間必須這樣安排。"
+    ]
+  },
+  {
+    "title": "聚會中｜音控",
+    "tag": "During · Audio",
+    "items": [
+      "播放唱詩的音樂時，音量不該太小，讓人無法全情投入；也不該太大，以致蓋過大家的歌聲。",
+      "留意講者提到播放圖片影片的時機",
+      "留意是否需要關閉線上聚會參與者的視頻音頻",
+      "隨時留意麥克風音量是否需要調整，善用 HIGH, MID, LOW 旋鈕調整音質"
+    ]
+  },
+  {
+    "title": "聚會中｜講台弟兄",
+    "tag": "During · Stage",
+    "items": [
+      "留意麥克風高度",
+      "留意示範麥克風擺放方向"
+    ]
+  },
+  {
+    "title": "聚會中｜麥克風傳遞員",
+    "tag": "During · Mic",
+    "items": [
+      "保護無線麥克風，請勿將麥克風放置在容易掉落的地方，如椅子上。",
+      "留意是否有問答討論的環節",
+      "確認評論的人是否有聲音，並隨時支援"
+    ]
+  }
+];
+    const STORAGE_KEY = 'media-dept-interactive-checklist-v1';
+    const slides = document.getElementById('slides');
+    const progress = document.getElementById('progress');
+    const progressText = document.getElementById('progressText');
+    const totalItems = sections.reduce((sum, section) => sum + section.items.length, 0);
+    let state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    let currentIndex = 0;
+
+    function itemId(sectionIndex, itemIndex) { return `s${sectionIndex}-i${itemIndex}`; }
+
+    function render() {
+      slides.innerHTML = sections.map((section, sectionIndex) => `
+        <article class="slide" data-index="${sectionIndex}">
+          <div class="panel">
+            <div class="kicker">${section.tag}</div>
+            <h1>${section.title}</h1>
+            <p class="meta">一次只處理這一區。此區全部打勾後，畫面會自動滑到下一區。</p>
+            <div class="check-list">
+              ${section.items.map((item, itemIndex) => {
+                const id = itemId(sectionIndex, itemIndex);
+                const checked = !!state[id];
+                return `<label class="check-item ${checked ? 'done' : ''}">
+                  <input type="checkbox" data-section="${sectionIndex}" data-id="${id}" ${checked ? 'checked' : ''}>
+                  <span>${escapeHtml(item)}</span>
+                </label>`;
+              }).join('')}
+            </div>
+            <div class="section-footer">
+              <span class="pill">區塊 ${sectionIndex + 1} / ${sections.length}</span>
+              <span class="pill" id="sectionStatus-${sectionIndex}">未完成</span>
+            </div>
+          </div>
+        </article>
+      `).join('') + `
+        <article class="slide" data-index="${sections.length}">
+          <div class="panel finish-card">
+            <div class="kicker">All Done</div>
+            <h1>全部完成 ✅</h1>
+            <p>所有 Check List 項目都已確認。若要重新操作，請點右上角「重設」。</p>
+            <button type="button" onclick="goTo(0)">回到第一區</button>
+          </div>
+        </article>`;
+      bindEvents();
+      updateProgress();
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+    }
+
+    function bindEvents() {
+      document.querySelectorAll('input[type="checkbox"]').forEach(input => {
+        input.addEventListener('change', () => {
+          state[input.dataset.id] = input.checked;
+          if (!input.checked) delete state[input.dataset.id];
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          input.closest('.check-item').classList.toggle('done', input.checked);
+          updateProgress();
+          const sectionIndex = Number(input.dataset.section);
+          if (isSectionComplete(sectionIndex)) {
+            setTimeout(() => goTo(Math.min(sectionIndex + 1, sections.length)), 420);
+          }
+        });
+      });
+    }
+
+    function isSectionComplete(sectionIndex) {
+      return sections[sectionIndex].items.every((_, itemIndex) => !!state[itemId(sectionIndex, itemIndex)]);
+    }
+
+    function updateProgress() {
+      const checked = Object.keys(state).length;
+      progress.style.width = `${Math.round((checked / totalItems) * 100)}%`;
+      progressText.textContent = `${checked} / ${totalItems} CHECKED`;
+      sections.forEach((section, index) => {
+        const el = document.getElementById(`sectionStatus-${index}`);
+        if (!el) return;
+        const doneCount = section.items.filter((_, itemIndex) => !!state[itemId(index, itemIndex)]).length;
+        const complete = doneCount === section.items.length;
+        el.textContent = complete ? '完成' : `${doneCount} / ${section.items.length}`;
+        el.classList.toggle('complete', complete);
+      });
+    }
+
+    function goTo(index) {
+      currentIndex = Math.max(0, Math.min(index, sections.length));
+      const target = slides.querySelector(`[data-index="${currentIndex}"]`);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+    }
+
+    document.getElementById('prevBtn').addEventListener('click', () => goTo(currentIndex - 1));
+    document.getElementById('nextBtn').addEventListener('click', () => goTo(currentIndex + 1));
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      if (!confirm('確定要清除所有勾選狀態嗎？')) return;
+      state = {};
+      localStorage.removeItem(STORAGE_KEY);
+      render();
+      goTo(0);
+    });
+
+    slides.addEventListener('scroll', () => {
+      const isMobile = matchMedia('(max-width: 720px)').matches;
+      const size = isMobile ? slides.clientHeight : slides.clientWidth;
+      const pos = isMobile ? slides.scrollTop : slides.scrollLeft;
+      currentIndex = Math.round(pos / Math.max(size, 1));
+    }, { passive: true });
+
+    render();
+  </script>
+</body>
+</html>
