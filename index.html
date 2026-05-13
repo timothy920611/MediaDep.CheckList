@@ -88,7 +88,7 @@
     .doc-card:hover::before { transform: scaleY(1); }
     .doc-card:nth-child(1){animation-delay:.05s} .doc-card:nth-child(2){animation-delay:.10s}
     .doc-card:nth-child(3){animation-delay:.15s} .doc-card:nth-child(4){animation-delay:.20s}
-    .doc-card:nth-child(5){animation-delay:.25s}
+    .doc-card:nth-child(5){animation-delay:.25s} .doc-card:nth-child(6){animation-delay:.30s}
     @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
     .card-num { font-family:'Space Mono',monospace; font-size:11px; color:var(--accent); width:20px; text-align:right; flex-shrink:0; }
     .card-icon {
@@ -198,7 +198,7 @@
           <div class="sub">MEDIA DEPT · DOCUMENT VIEWER</div>
         </div>
       </div>
-      <div class="header-right">5 DOCS</div>
+      <div class="header-right">6 DOCS</div>
     </header>
     <div class="accent-line"></div>
     <div class="home-scroll">
@@ -239,7 +239,7 @@
     <div class="viewer-wrap">
       <div class="viewer-shell">
         <iframe id="pdfFrame" class="pdf-frame" title="PDF Viewer"></iframe>
-        <div class="reader-tip">這裡使用瀏覽器原生 PDF viewer，所以畫質、目錄和連結都會維持原樣。</div>
+        <div class="reader-tip">PDF 會使用瀏覽器原生 viewer；HTML 互動頁會直接在此視窗中開啟。</div>
         <div class="viewer-fallback" id="viewerFallback">
           <div>你的瀏覽器可能未啟用內建 PDF 顯示。</div>
           <button id="fallbackOpen">改用新視窗開啟</button>
@@ -255,6 +255,7 @@
       { id: 'S-179',    file: 'S-179_CH.pdf',    label: 'S-179' },
       { id: 'S-261',    file: 'S-261_CH.pdf',    label: 'S-261' },
       { id: 'zoominst', file: 'zoominst_CH.pdf', label: 'ZOOM'  },
+      { id: 'checklist-interactive', file: 'checklist-interactive.html', label: '互動 CHECK LIST', name: '確認表單 Check List｜互動版' },
     ];
 
     const grid = document.getElementById('docGrid');
@@ -275,11 +276,12 @@
     docs.forEach((doc, i) => {
       const card = document.createElement('div');
       card.className = 'doc-card';
+      const fileType = doc.file.toLowerCase().endsWith('.html') ? 'HTML' : 'PDF';
       card.innerHTML = `
         <span class="card-num">0${i+1}</span>
-        <div class="card-icon"><span>PDF</span></div>
+        <div class="card-icon"><span>${fileType}</span></div>
         <div class="card-info">
-          <div class="card-name">${doc.file}</div>
+          <div class="card-name">${doc.name || doc.file}</div>
           <div class="card-id">${doc.label}</div>
         </div>
         <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>`;
@@ -291,9 +293,10 @@
       const doc = docs.find(d => d.id === id);
       if (!doc) return;
       const src = encodeURI(doc.file);
+      const isHtml = doc.file.toLowerCase().endsWith('.html');
 
-      // iPad / iPhone: open directly in a new tab for the most reliable PDF experience.
-      if (isIOS) {
+      // iPad / iPhone: PDF 直接開新分頁最穩；HTML 互動頁保留在內嵌閱讀器。
+      if (isIOS && !isHtml) {
         const win = window.open(src, '_blank', 'noopener,noreferrer');
         if (!win) {
           homePage.classList.add('hidden');
@@ -313,16 +316,16 @@
       currentDoc = doc;
       homePage.classList.add('hidden');
       readerPage.classList.remove('hidden');
-
-      readerTitle.textContent = doc.file;
+      readerTitle.textContent = doc.name || doc.file;
       openNewTab.href = src;
       downloadBtn.href = src;
       downloadBtn.download = doc.file;
       fallbackOpen.onclick = () => window.open(src, '_blank', 'noopener,noreferrer');
       viewerFallback.style.display = 'none';
 
-      // Use the browser's native PDF viewer.
+      // HTML 互動頁與 PDF 都可放入同一個 iframe；HTML 不需要 PDF fallback 檢查。
       pdfFrame.src = src;
+      if (isHtml) return;
 
       // Some browsers may not show PDFs in iframe; after a short delay,
       // reveal a fallback button if the frame seems empty.
