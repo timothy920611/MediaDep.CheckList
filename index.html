@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>媒體部門 CheckList</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0e0e0e;
+      --surface:   #161616;
+      --border:    #2a2a2a;
+      --accent:    #c8a96e;
+      --accent2:   #e8c98e;
+      --text:      #e8e2d9;
+      --muted:     #6b6560;
+      --radius:    6px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Serif TC', serif;
+    }
+
+    /* ── HEADER ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 32px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      z-index: 10;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--accent);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Space Mono', monospace;
+      font-weight: 700;
+      font-size: 14px;
+      color: #0e0e0e;
+      letter-spacing: -1px;
+      flex-shrink: 0;
+    }
+
+    .logo-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--text);
+    }
+
+    .logo-sub {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      letter-spacing: 0.08em;
+      margin-top: 1px;
+    }
+
+    /* ── SELECTOR BAR ── */
+    .selector-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      gap: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .selector-bar::-webkit-scrollbar { display: none; }
+
+    .tab-btn {
+      position: relative;
+      padding: 14px 20px;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color 0.2s;
+      border-bottom: 2px solid transparent;
+    }
+
+    .tab-btn:hover { color: var(--text); }
+
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .tab-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      background: var(--border);
+      border-radius: 3px;
+      font-size: 9px;
+      margin-right: 8px;
+      color: var(--muted);
+      vertical-align: middle;
+    }
+
+    .tab-btn.active .tab-number {
+      background: var(--accent);
+      color: #0e0e0e;
+    }
+
+    /* ── LAYOUT ── */
+    .layout {
+      display: flex;
+      height: calc(100vh - 113px);
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: 260px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 20px 20px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-label {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .file-list {
+      list-style: none;
+      overflow-y: auto;
+      flex: 1;
+      padding: 10px 0;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      cursor: pointer;
+      transition: background 0.15s;
+      border-left: 2px solid transparent;
+    }
+
+    .file-item:hover { background: rgba(200,169,110,0.05); }
+
+    .file-item.active {
+      background: rgba(200,169,110,0.08);
+      border-left-color: var(--accent);
+    }
+
+    .file-icon {
+      width: 32px;
+      height: 38px;
+      background: var(--border);
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 9px;
+      font-family: 'Space Mono', monospace;
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .file-icon::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 8px;
+      height: 8px;
+      background: var(--bg);
+      clip-path: polygon(100% 0, 0 0, 100% 100%);
+    }
+
+    .file-item.active .file-icon {
+      background: rgba(200,169,110,0.15);
+    }
+
+    .file-meta { flex: 1; min-width: 0; }
+
+    .file-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-item.active .file-name { color: var(--accent2); }
+
+    .file-desc {
+      font-size: 10px;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      margin-top: 2px;
+    }
+
+    /* ── VIEWER ── */
+    .viewer-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: #111;
+    }
+
+    .viewer-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .current-file {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+    }
+
+    .current-file-badge {
+      background: var(--accent);
+      color: #0e0e0e;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+    }
+
+    .current-file-name { color: var(--text); letter-spacing: 0.04em; }
+
+    .toolbar-actions { display: flex; gap: 8px; align-items: center; }
+
+    .tool-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: var(--border);
+      border: 1px solid #333;
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 11px;
+      font-family: 'Space Mono', monospace;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+
+    .tool-btn:hover {
+      background: rgba(200,169,110,0.1);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .tool-btn svg { width: 14px; height: 14px; }
+
+    .iframe-wrap {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+
+    .placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      color: var(--muted);
+    }
+
+    .placeholder-icon {
+      width: 64px;
+      height: 64px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .placeholder-text {
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+    }
+
+    /* ── LOADING ── */
+    .loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: #111;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+    }
+
+    .loading-overlay.show { display: flex; }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── DECORATIVE LINE ── */
+    .deco-line {
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent) 0%, transparent 100%);
+      width: 100%;
+    }
+
+    /* ── MOBILE ── */
+    @media (max-width: 640px) {
+      header { padding: 14px 16px; }
+      .selector-bar { padding: 0 8px; }
+      .layout { flex-direction: column; height: auto; min-height: calc(100vh - 113px); }
+      .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+      .file-list { max-height: 220px; }
+      .viewer-area { flex: 1; min-height: 60vh; }
+      .viewer-toolbar { flex-wrap: wrap; gap: 8px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">MD</div>
+      <div>
+        <div class="logo-title">媒體部門 CheckList</div>
+        <div class="logo-sub">MEDIA DEPT · DOCUMENT VIEWER</div>
+      </div>
+    </div>
+    <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.08em;">5 DOCUMENTS</div>
+  </header>
+  <div class="deco-line"></div>
+
+  <!-- TAB BAR -->
+  <nav class="selector-bar" id="tabBar"></nav>
+
+  <!-- LAYOUT -->
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-label">文件清單</div>
+      </div>
+      <ul class="file-list" id="fileList"></ul>
+    </aside>
+
+    <!-- VIEWER -->
+    <main class="viewer-area">
+      <div class="viewer-toolbar">
+        <div class="current-file">
+          <span class="current-file-badge">PDF</span>
+          <span class="current-file-name" id="currentFileName">請選擇文件</span>
+        </div>
+        <div class="toolbar-actions">
+          <a class="tool-btn" id="openNewTab" href="#" target="_blank" style="display:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
+              <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>新視窗開啟
+          </a>
+          <a class="tool-btn" id="downloadBtn" href="#" download style="display:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>下載
+          </a>
+        </div>
+      </div>
+
+      <div class="iframe-wrap">
+        <!-- Placeholder -->
+        <div class="placeholder" id="placeholder">
+          <div class="placeholder-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+          </div>
+          <div class="placeholder-text">← 從左側選擇一份文件</div>
+        </div>
+
+        <!-- Loading -->
+        <div class="loading-overlay" id="loadingOverlay">
+          <div class="spinner"></div>
+        </div>
+
+        <!-- PDF Iframe -->
+        <iframe id="pdfFrame" src="" style="display:none;"></iframe>
+      </div>
+    </main>
+
+  </div>
+
+  <script>
+    const BASE = 'https://raw.githubusercontent.com/timothy920611/MediaDep.CheckList/main/';
+
+    const docs = [
+      { id: 'S-144',     file: 'S-144_CH.pdf',    label: 'S-144',    desc: 'S-144_CH' },
+      { id: 'S-178',     file: 'S-178_CH.pdf',    label: 'S-178',    desc: 'S-178_CH' },
+      { id: 'S-179',     file: 'S-179_CH.pdf',    label: 'S-179',    desc: 'S-179_CH' },
+      { id: 'S-261',     file: 'S-261_CH.pdf',    label: 'S-261',    desc: 'S-261_CH' },
+      { id: 'zoominst',  file: 'zoominst_CH.pdf', label: 'ZOOM',     desc: 'zoominst_CH' },
+    ];
+
+    let current = null;
+
+    const tabBar      = document.getElementById('tabBar');
+    const fileList    = document.getElementById('fileList');
+    const pdfFrame    = document.getElementById('pdfFrame');
+    const placeholder = document.getElementById('placeholder');
+    const loading     = document.getElementById('loadingOverlay');
+    const fileNameEl  = document.getElementById('currentFileName');
+    const openNewTab  = document.getElementById('openNewTab');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    // Build tabs + sidebar
+    docs.forEach((doc, i) => {
+      // Tab
+      const btn = document.createElement('button');
+      btn.className = 'tab-btn';
+      btn.innerHTML = `<span class="tab-number">${i + 1}</span>${doc.label}`;
+      btn.addEventListener('click', () => loadDoc(doc.id));
+      btn.id = `tab-${doc.id}`;
+      tabBar.appendChild(btn);
+
+      // Sidebar item
+      const li = document.createElement('li');
+      li.className = 'file-item';
+      li.id = `item-${doc.id}`;
+      li.innerHTML = `
+        <div class="file-icon">PDF</div>
+        <div class="file-meta">
+          <div class="file-name">${doc.file}</div>
+          <div class="file-desc">${doc.desc}</div>
+        </div>
+      `;
+      li.addEventListener('click', () => loadDoc(doc.id));
+      fileList.appendChild(li);
+    });
+
+    function loadDoc(id) {
+      if (current === id) return;
+      current = id;
+
+      const doc = docs.find(d => d.id === id);
+      const url = BASE + encodeURIComponent(doc.file);
+
+      // Update active states
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.file-item').forEach(li => li.classList.remove('active'));
+      document.getElementById(`tab-${id}`).classList.add('active');
+      document.getElementById(`item-${id}`).classList.add('active');
+
+      // Update toolbar
+      fileNameEl.textContent = doc.file;
+      openNewTab.href = url;
+      openNewTab.style.display = 'flex';
+      downloadBtn.href = url;
+      downloadBtn.download = doc.file;
+      downloadBtn.style.display = 'flex';
+
+      // Show loading
+      placeholder.style.display = 'none';
+      pdfFrame.style.display = 'none';
+      loading.classList.add('show');
+
+      // Load PDF via Google Docs Viewer as fallback for cross-origin issues
+      // Try direct first, fall back to Google Docs viewer
+      const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+
+      pdfFrame.onload = () => {
+        loading.classList.remove('show');
+        pdfFrame.style.display = 'block';
+      };
+
+      pdfFrame.onerror = () => {
+        loading.classList.remove('show');
+        pdfFrame.style.display = 'block';
+      };
+
+      pdfFrame.src = viewerUrl;
+    }
+  </script>
+</body>
+</html>
