@@ -392,7 +392,7 @@
 </div>
 
 <script>
-  const BASE = 'https://raw.githubusercontent.com/timothy920611/MediaDep.CheckList/main/';
+  const BASE = './';
 
   const docs = [
     { id: 'S-144',    file: 'S-144_CH.pdf',    label: 'S-144' },
@@ -453,8 +453,7 @@
     currentId = id;
 
     const doc = docs.find(d => d.id === id);
-    const rawUrl = BASE + encodeURIComponent(doc.file);
-    const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(rawUrl)}&embedded=true`;
+    const rawUrl = BASE + doc.file;
 
     // Update tabs
     document.querySelectorAll('.tab-pill').forEach(b => b.classList.remove('active'));
@@ -476,7 +475,7 @@
 
     setTimeout(() => {
       frame.onload = () => loading.classList.add('hide');
-      frame.src = viewerUrl;
+      frame.src = rawUrl;
     }, 80);
   }
 </script>
