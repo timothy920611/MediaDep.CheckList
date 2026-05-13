@@ -6,6 +6,8 @@
   <title>媒體部門 CheckList</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <!-- PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -23,267 +25,140 @@
     }
 
     html, body {
-      height: 100%;
-      overflow: hidden;
-      background: var(--bg);
-      color: var(--text);
+      height: 100%; overflow: hidden;
+      background: var(--bg); color: var(--text);
       font-family: 'Noto Serif TC', serif;
     }
 
     /* ── PAGE SYSTEM ── */
     .page {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
       transition: transform 0.42s cubic-bezier(0.77,0,0.18,1),
                   opacity  0.42s cubic-bezier(0.77,0,0.18,1);
     }
-    .page.hidden {
-      transform: translateX(100%);
-      opacity: 0;
-      pointer-events: none;
-    }
+    .page.hidden { transform: translateX(100%); opacity: 0; pointer-events: none; }
 
-    /* ── ACCENT LINE ── */
     .accent-line {
-      height: 2px;
+      height: 2px; flex-shrink: 0;
       background: linear-gradient(90deg, var(--accent) 0%, transparent 60%);
-      flex-shrink: 0;
     }
 
-    /* ════════════════════════
-       HOME PAGE
-    ════════════════════════ */
+    /* ══════════════════ HOME ══════════════════ */
     #homePage { overflow: hidden; }
-
     .home-scroll { flex: 1; overflow-y: auto; }
 
     .site-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 24px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 24px; background: var(--surface);
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
     }
-
     .logo { display: flex; align-items: center; gap: 12px; }
-
     .logo-badge {
-      width: 38px; height: 38px;
-      background: var(--accent);
-      border-radius: 5px;
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'Space Mono', monospace;
-      font-weight: 700; font-size: 13px;
-      color: #0c0b09;
-      flex-shrink: 0;
+      width: 38px; height: 38px; background: var(--accent);
+      border-radius: 5px; display: flex; align-items: center; justify-content: center;
+      font-family: 'Space Mono', monospace; font-weight: 700; font-size: 13px;
+      color: #0c0b09; flex-shrink: 0;
     }
-
     .logo-text .title { font-size: 15px; font-weight: 700; letter-spacing: 0.04em; }
     .logo-text .sub {
       font-size: 10px; color: var(--muted);
-      font-family: 'Space Mono', monospace;
-      letter-spacing: 0.1em; margin-top: 1px;
+      font-family: 'Space Mono', monospace; letter-spacing: 0.1em; margin-top: 1px;
     }
+    .header-right { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.1em; }
 
-    .header-right {
-      font-family: 'Space Mono', monospace;
-      font-size: 10px; color: var(--muted); letter-spacing: 0.1em;
-    }
-
-    .home-body {
-      max-width: 640px;
-      margin: 0 auto;
-      padding: 40px 24px 60px;
-      width: 100%;
-    }
-
+    .home-body { max-width: 640px; margin: 0 auto; padding: 40px 24px 60px; width: 100%; }
     .eyebrow {
-      font-family: 'Space Mono', monospace;
-      font-size: 10px; letter-spacing: 0.18em;
-      color: var(--accent); text-transform: uppercase;
-      margin-bottom: 10px;
+      font-family: 'Space Mono', monospace; font-size: 10px;
+      letter-spacing: 0.18em; color: var(--accent); text-transform: uppercase; margin-bottom: 10px;
     }
+    .home-body h1 { font-size: clamp(24px,6vw,34px); font-weight: 700; line-height: 1.3; letter-spacing: 0.02em; }
+    .home-body .desc { margin-top: 10px; font-size: 13px; color: var(--muted); line-height: 1.9; font-weight: 300; }
+    .divider { width: 40px; height: 1px; background: var(--accent); margin: 28px 0; }
 
-    .home-body h1 {
-      font-size: clamp(24px, 6vw, 34px);
-      font-weight: 700; line-height: 1.3; letter-spacing: 0.02em;
-    }
-
-    .home-body .desc {
-      margin-top: 10px; font-size: 13px;
-      color: var(--muted); line-height: 1.9; font-weight: 300;
-    }
-
-    .divider {
-      width: 40px; height: 1px;
-      background: var(--accent);
-      margin: 28px 0;
-    }
-
-    /* Cards */
     .doc-grid { display: flex; flex-direction: column; gap: 12px; }
-
     .doc-card {
       display: flex; align-items: center; gap: 16px;
-      padding: 18px 20px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      cursor: pointer;
+      padding: 18px 20px; background: var(--card);
+      border: 1px solid var(--border); border-radius: 8px;
+      cursor: pointer; position: relative; overflow: hidden;
       transition: border-color 0.2s, transform 0.2s, background 0.2s;
-      position: relative;
-      overflow: hidden;
       animation: fadeUp 0.5s ease both;
     }
-
     .doc-card::before {
-      content: '';
-      position: absolute;
-      left: 0; top: 0; bottom: 0; width: 3px;
-      background: var(--accent);
-      transform: scaleY(0);
-      transform-origin: bottom;
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: var(--accent); transform: scaleY(0); transform-origin: bottom;
       transition: transform 0.2s;
     }
-
     .doc-card:hover { border-color: var(--accent3); background: #1e1c18; transform: translateX(4px); }
     .doc-card:hover::before { transform: scaleY(1); }
+    .doc-card:nth-child(1){animation-delay:.05s} .doc-card:nth-child(2){animation-delay:.10s}
+    .doc-card:nth-child(3){animation-delay:.15s} .doc-card:nth-child(4){animation-delay:.20s}
+    .doc-card:nth-child(5){animation-delay:.25s}
+    @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
 
-    .doc-card:nth-child(1) { animation-delay: 0.05s; }
-    .doc-card:nth-child(2) { animation-delay: 0.10s; }
-    .doc-card:nth-child(3) { animation-delay: 0.15s; }
-    .doc-card:nth-child(4) { animation-delay: 0.20s; }
-    .doc-card:nth-child(5) { animation-delay: 0.25s; }
-
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(14px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    .card-num {
-      font-family: 'Space Mono', monospace;
-      font-size: 11px; color: var(--accent);
-      width: 20px; text-align: right; flex-shrink: 0;
-    }
-
+    .card-num { font-family:'Space Mono',monospace; font-size:11px; color:var(--accent); width:20px; text-align:right; flex-shrink:0; }
     .card-icon {
-      width: 42px; height: 50px;
-      background: var(--dim);
-      border-radius: 4px;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; position: relative;
+      width:42px; height:50px; background:var(--dim); border-radius:4px;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0; position:relative;
     }
     .card-icon::after {
-      content: '';
-      position: absolute; top: 0; right: 0;
-      width: 9px; height: 9px;
-      background: var(--bg);
-      clip-path: polygon(100% 0, 0 0, 100% 100%);
+      content:''; position:absolute; top:0; right:0; width:9px; height:9px;
+      background:var(--bg); clip-path:polygon(100% 0,0 0,100% 100%);
     }
-    .card-icon span {
-      font-family: 'Space Mono', monospace;
-      font-size: 9px; font-weight: 700;
-      color: var(--accent); letter-spacing: -0.5px;
-    }
+    .card-icon span { font-family:'Space Mono',monospace; font-size:9px; font-weight:700; color:var(--accent); letter-spacing:-0.5px; }
+    .card-info { flex:1; min-width:0; }
+    .card-name { font-size:14px; font-weight:600; letter-spacing:0.04em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .card-id { font-family:'Space Mono',monospace; font-size:10px; color:var(--muted); margin-top:3px; letter-spacing:0.06em; }
+    .card-arrow { color:var(--muted); flex-shrink:0; transition:color 0.2s,transform 0.2s; }
+    .doc-card:hover .card-arrow { color:var(--accent); transform:translateX(3px); }
 
-    .card-info { flex: 1; min-width: 0; }
-    .card-name {
-      font-size: 14px; font-weight: 600;
-      letter-spacing: 0.04em;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .card-id {
-      font-family: 'Space Mono', monospace;
-      font-size: 10px; color: var(--muted);
-      margin-top: 3px; letter-spacing: 0.06em;
-    }
-
-    .card-arrow {
-      color: var(--muted); flex-shrink: 0;
-      transition: color 0.2s, transform 0.2s;
-    }
-    .doc-card:hover .card-arrow { color: var(--accent); transform: translateX(3px); }
-
-    /* ════════════════════════
-       READER PAGE
-    ════════════════════════ */
+    /* ══════════════════ READER ══════════════════ */
     #readerPage { overflow: hidden; }
 
     .reader-header {
-      display: flex; align-items: center;
-      gap: 8px; padding: 10px 14px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
+      display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+      background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0;
     }
-
     .back-btn {
-      display: flex; align-items: center; gap: 5px;
-      padding: 6px 12px;
-      background: var(--dim);
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      color: var(--text);
-      font-family: 'Space Mono', monospace;
-      font-size: 10px; letter-spacing: 0.06em;
-      cursor: pointer;
+      display: flex; align-items: center; gap: 5px; padding: 6px 12px;
+      background: var(--dim); border: 1px solid var(--border); border-radius: 5px;
+      color: var(--text); font-family: 'Space Mono', monospace;
+      font-size: 10px; letter-spacing: 0.06em; cursor: pointer;
       transition: background 0.15s, border-color 0.15s, color 0.15s;
       flex-shrink: 0; white-space: nowrap;
     }
     .back-btn:hover { background: rgba(200,169,110,0.1); border-color: var(--accent); color: var(--accent); }
-
     .reader-title {
-      font-family: 'Space Mono', monospace;
-      font-size: 11px; letter-spacing: 0.04em;
-      flex: 1; text-align: center;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.04em;
+      flex: 1; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-
     .reader-actions { display: flex; gap: 6px; flex-shrink: 0; }
-
     .icon-btn {
-      width: 32px; height: 32px;
-      display: flex; align-items: center; justify-content: center;
-      background: var(--dim);
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      color: var(--muted); cursor: pointer;
-      text-decoration: none;
+      width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+      background: var(--dim); border: 1px solid var(--border); border-radius: 5px;
+      color: var(--muted); cursor: pointer; text-decoration: none;
       transition: background 0.15s, color 0.15s, border-color 0.15s;
     }
     .icon-btn:hover { background: rgba(200,169,110,0.1); border-color: var(--accent); color: var(--accent); }
     .icon-btn svg { width: 14px; height: 14px; }
 
-    /* Tab switch bar */
+    /* Tab bar */
     .tab-switch {
-      display: flex;
-      background: var(--surface);
+      display: flex; background: var(--surface);
       border-bottom: 1px solid var(--border);
-      overflow-x: auto; scrollbar-width: none;
-      flex-shrink: 0;
+      overflow-x: auto; scrollbar-width: none; flex-shrink: 0;
     }
     .tab-switch::-webkit-scrollbar { display: none; }
-
     .tab-pill {
-      display: flex; align-items: center; gap: 6px;
-      padding: 10px 16px;
-      font-family: 'Space Mono', monospace;
-      font-size: 10px; letter-spacing: 0.08em;
-      color: var(--muted);
-      background: transparent; border: none;
-      border-bottom: 2px solid transparent;
-      cursor: pointer; white-space: nowrap;
-      transition: color 0.15s;
-      flex-shrink: 0;
+      display: flex; align-items: center; gap: 6px; padding: 10px 16px;
+      font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 0.08em;
+      color: var(--muted); background: transparent; border: none;
+      border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap;
+      transition: color 0.15s; flex-shrink: 0;
     }
     .tab-pill .n {
-      width: 16px; height: 16px;
-      background: var(--border);
-      border-radius: 3px;
+      width: 16px; height: 16px; background: var(--border); border-radius: 3px;
       display: flex; align-items: center; justify-content: center;
       font-size: 8px; color: var(--muted);
     }
@@ -291,40 +166,126 @@
     .tab-pill.active { color: var(--accent); border-bottom-color: var(--accent); }
     .tab-pill.active .n { background: var(--accent); color: #0c0b09; }
 
-    /* Viewer */
-    .viewer-wrap {
-      flex: 1; position: relative; overflow: hidden; background: #111;
-    }
-    iframe { width: 100%; height: 100%; border: none; display: block; }
+    /* PDF viewer */
+    .viewer-wrap { flex: 1; display: flex; overflow: hidden; position: relative; }
 
+    /* Sidebar outline */
+    .outline-panel {
+      width: 220px; flex-shrink: 0;
+      background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
+      transition: width 0.3s, opacity 0.3s;
+    }
+    .outline-panel.collapsed { width: 0; opacity: 0; pointer-events: none; }
+    .outline-header {
+      padding: 12px 14px; border-bottom: 1px solid var(--border);
+      font-family: 'Space Mono', monospace; font-size: 9px;
+      letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .outline-list { flex: 1; overflow-y: auto; padding: 6px 0; }
+    .outline-list::-webkit-scrollbar { width: 3px; }
+    .outline-list::-webkit-scrollbar-thumb { background: var(--border); }
+    .outline-item {
+      display: block; width: 100%; padding: 8px 14px;
+      font-size: 11px; color: var(--text); background: none; border: none;
+      text-align: left; cursor: pointer; line-height: 1.4;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .outline-item:hover { background: rgba(200,169,110,0.08); color: var(--accent2); }
+    .outline-item.level-1 { padding-left: 24px; font-size: 10px; color: var(--muted); }
+    .outline-item.level-2 { padding-left: 34px; font-size: 10px; color: var(--muted); }
+    .outline-empty {
+      padding: 20px 14px;
+      font-family: 'Space Mono', monospace; font-size: 10px; color: var(--muted);
+      text-align: center; line-height: 1.8;
+    }
+
+    /* Canvas scroll area */
+    .canvas-area {
+      flex: 1; overflow-y: auto; overflow-x: auto;
+      background: #1a1a1a; display: flex; flex-direction: column; align-items: center;
+      padding: 20px 16px;
+      gap: 12px;
+    }
+    .canvas-area::-webkit-scrollbar { width: 6px; }
+    .canvas-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .page-canvas-wrap {
+      position: relative; flex-shrink: 0;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    }
+    .page-canvas-wrap canvas { display: block; }
+
+    /* Bottom controls */
+    .pdf-controls {
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 8px 14px;
+      background: var(--surface); border-top: 1px solid var(--border);
+      flex-shrink: 0; flex-wrap: wrap;
+    }
+    .ctrl-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px;
+      background: var(--dim); border: 1px solid var(--border); border-radius: 4px;
+      color: var(--text); cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .ctrl-btn:hover { background: rgba(200,169,110,0.1); border-color: var(--accent); color: var(--accent); }
+    .ctrl-btn:disabled { opacity: 0.35; pointer-events: none; }
+    .ctrl-btn svg { width: 13px; height: 13px; }
+    .page-info {
+      font-family: 'Space Mono', monospace; font-size: 10px; color: var(--muted);
+      letter-spacing: 0.08em; min-width: 80px; text-align: center;
+    }
+    .page-input {
+      width: 40px; padding: 4px 6px; text-align: center;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+      color: var(--text); font-family: 'Space Mono', monospace; font-size: 11px;
+    }
+    .page-input:focus { outline: none; border-color: var(--accent); }
+    .sep { width: 1px; height: 20px; background: var(--border); margin: 0 2px; }
+    .outline-toggle-btn {
+      display: flex; align-items: center; gap: 5px;
+      padding: 4px 10px; height: 30px;
+      background: var(--dim); border: 1px solid var(--border); border-radius: 4px;
+      color: var(--muted); cursor: pointer; font-family: 'Space Mono', monospace;
+      font-size: 9px; letter-spacing: 0.06em;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .outline-toggle-btn:hover, .outline-toggle-btn.active {
+      background: rgba(200,169,110,0.1); border-color: var(--accent); color: var(--accent);
+    }
+    .outline-toggle-btn svg { width: 12px; height: 12px; }
+
+    /* Loading overlay */
     .loading-screen {
-      position: absolute; inset: 0;
+      position: absolute; inset: 0; z-index: 20;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      gap: 14px; background: #111; z-index: 5;
+      gap: 14px; background: #1a1a1a;
       transition: opacity 0.3s;
     }
     .loading-screen.hide { opacity: 0; pointer-events: none; }
-
     .spinner {
       width: 36px; height: 36px;
-      border: 2px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+      border: 2px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
     }
-    .loading-label {
-      font-family: 'Space Mono', monospace;
-      font-size: 10px; color: var(--muted); letter-spacing: 0.12em;
-    }
+    .loading-label { font-family:'Space Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:0.12em; }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Mobile tweaks */
+    @media (max-width: 600px) {
+      .outline-panel { display: none; }
+      .outline-toggle-btn { display: none; }
+    }
   </style>
 </head>
 <body>
 
-<!-- ══════════════════════════
-     HOME PAGE
-══════════════════════════ -->
+<!-- ══ HOME PAGE ══ -->
 <div class="page" id="homePage">
   <header class="site-header">
     <div class="logo">
@@ -337,7 +298,6 @@
     <div class="header-right">5 DOCS</div>
   </header>
   <div class="accent-line"></div>
-
   <div class="home-scroll">
     <div class="home-body">
       <div class="eyebrow">文件索引</div>
@@ -349,16 +309,12 @@
   </div>
 </div>
 
-<!-- ══════════════════════════
-     READER PAGE
-══════════════════════════ -->
+<!-- ══ READER PAGE ══ -->
 <div class="page hidden" id="readerPage">
 
   <div class="reader-header">
     <button class="back-btn" id="backBtn">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <polyline points="15 18 9 12 15 6"/>
-      </svg>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
       返回
     </button>
     <div class="reader-title" id="readerTitle">—</div>
@@ -382,17 +338,55 @@
   <nav class="tab-switch" id="tabSwitch"></nav>
 
   <div class="viewer-wrap">
-    <div class="loading-screen" id="loadingScreen">
-      <div class="spinner"></div>
-      <div class="loading-label">載入中…</div>
+    <!-- Outline sidebar -->
+    <div class="outline-panel collapsed" id="outlinePanel">
+      <div class="outline-header">目錄</div>
+      <div class="outline-list" id="outlineList"></div>
     </div>
-    <iframe id="pdfFrame" src="about:blank"></iframe>
+
+    <!-- Canvas area -->
+    <div class="canvas-area" id="canvasArea">
+      <div class="loading-screen" id="loadingScreen">
+        <div class="spinner"></div>
+        <div class="loading-label">載入中…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom controls -->
+  <div class="pdf-controls">
+    <button class="outline-toggle-btn" id="outlineToggle" title="目錄">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/>
+      </svg>目錄
+    </button>
+    <div class="sep"></div>
+    <button class="ctrl-btn" id="prevBtn" disabled title="上一頁">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <input class="page-input" id="pageInput" type="number" min="1" value="1" />
+    <span class="page-info" id="pageInfo">/ —</span>
+    <button class="ctrl-btn" id="nextBtn" disabled title="下一頁">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+    <div class="sep"></div>
+    <button class="ctrl-btn" id="zoomOutBtn" title="縮小">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+    </button>
+    <button class="ctrl-btn" id="zoomInBtn" title="放大">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+    </button>
+    <button class="ctrl-btn" id="zoomFitBtn" title="符合寬度">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+    </button>
   </div>
 
 </div>
 
 <script>
-  const BASE = './';
+  // PDF.js worker
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
   const docs = [
     { id: 'S-144',    file: 'S-144_CH.pdf',    label: 'S-144' },
@@ -402,9 +396,29 @@
     { id: 'zoominst', file: 'zoominst_CH.pdf', label: 'ZOOM'  },
   ];
 
-  let currentId = null;
+  // State
+  let pdfDoc      = null;
+  let currentId   = null;
+  let currentPage = 1;
+  let scale       = 1.4;
+  let renderTask  = null;
+  let outlineOpen = false;
 
-  // Build home cards
+  // Elements
+  const canvasArea     = document.getElementById('canvasArea');
+  const loadingScreen  = document.getElementById('loadingScreen');
+  const pageInput      = document.getElementById('pageInput');
+  const pageInfo       = document.getElementById('pageInfo');
+  const prevBtn        = document.getElementById('prevBtn');
+  const nextBtn        = document.getElementById('nextBtn');
+  const zoomInBtn      = document.getElementById('zoomInBtn');
+  const zoomOutBtn     = document.getElementById('zoomOutBtn');
+  const zoomFitBtn     = document.getElementById('zoomFitBtn');
+  const outlinePanel   = document.getElementById('outlinePanel');
+  const outlineList    = document.getElementById('outlineList');
+  const outlineToggle  = document.getElementById('outlineToggle');
+
+  /* ── Home cards ── */
   const grid = document.getElementById('docGrid');
   docs.forEach((doc, i) => {
     const card = document.createElement('div');
@@ -416,14 +430,12 @@
         <div class="card-name">${doc.file}</div>
         <div class="card-id">${doc.label}</div>
       </div>
-      <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="9 18 15 12 9 6"/>
-      </svg>`;
+      <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>`;
     card.addEventListener('click', () => openReader(doc.id));
     grid.appendChild(card);
   });
 
-  // Build tab pills
+  /* ── Tab pills ── */
   const tabSwitch = document.getElementById('tabSwitch');
   docs.forEach((doc, i) => {
     const btn = document.createElement('button');
@@ -434,26 +446,24 @@
     tabSwitch.appendChild(btn);
   });
 
-  // Navigate to reader
+  /* ── Navigation ── */
   function openReader(id) {
     document.getElementById('homePage').classList.add('hidden');
     document.getElementById('readerPage').classList.remove('hidden');
     loadDoc(id);
   }
 
-  // Back to home
   document.getElementById('backBtn').addEventListener('click', () => {
     document.getElementById('readerPage').classList.add('hidden');
     document.getElementById('homePage').classList.remove('hidden');
   });
 
-  // Load PDF
-  function loadDoc(id) {
+  /* ── Load PDF ── */
+  async function loadDoc(id) {
     if (currentId === id) return;
     currentId = id;
 
     const doc = docs.find(d => d.id === id);
-    const rawUrl = BASE + doc.file;
 
     // Update tabs
     document.querySelectorAll('.tab-pill').forEach(b => b.classList.remove('active'));
@@ -461,23 +471,192 @@
     activeTab.classList.add('active');
     activeTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
 
-    // Update header
+    // Header
     document.getElementById('readerTitle').textContent = doc.file;
-    document.getElementById('openNewTab').href = rawUrl;
+    document.getElementById('openNewTab').href = doc.file;
     const dl = document.getElementById('downloadBtn');
-    dl.href = rawUrl; dl.download = doc.file;
+    dl.href = doc.file; dl.download = doc.file;
 
-    // Load
-    const loading = document.getElementById('loadingScreen');
-    const frame   = document.getElementById('pdfFrame');
-    loading.classList.remove('hide');
-    frame.src = 'about:blank';
+    // Reset state
+    currentPage = 1;
+    pdfDoc = null;
+    prevBtn.disabled = true;
+    nextBtn.disabled = true;
+    pageInput.value = 1;
+    pageInfo.textContent = '/ —';
 
-    setTimeout(() => {
-      frame.onload = () => loading.classList.add('hide');
-      frame.src = rawUrl;
-    }, 80);
+    // Clear canvases (keep loading screen)
+    Array.from(canvasArea.children).forEach(el => {
+      if (!el.classList.contains('loading-screen')) el.remove();
+    });
+    loadingScreen.classList.remove('hide');
+
+    // Clear outline
+    outlineList.innerHTML = '';
+
+    try {
+      pdfDoc = await pdfjsLib.getDocument(doc.file).promise;
+      const total = pdfDoc.numPages;
+      pageInfo.textContent = `/ ${total}`;
+      pageInput.max = total;
+      prevBtn.disabled = currentPage <= 1;
+      nextBtn.disabled = currentPage >= total;
+
+      loadingScreen.classList.add('hide');
+
+      // Render first page immediately, others lazily
+      await renderPage(currentPage);
+      preRenderPage(currentPage + 1);
+
+      // Load outline
+      buildOutline(pdfDoc);
+
+    } catch (e) {
+      loadingScreen.querySelector('.loading-label').textContent = '載入失敗，請重試';
+      console.error(e);
+    }
   }
+
+  /* ── Render a single page ── */
+  async function renderPage(num) {
+    if (!pdfDoc) return;
+
+    // Check if canvas for this page already exists
+    let wrap = canvasArea.querySelector(`[data-page="${num}"]`);
+    if (wrap) {
+      wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+
+    const page = await pdfDoc.getPage(num);
+    const viewport = page.getViewport({ scale });
+
+    const canvas = document.createElement('canvas');
+    canvas.width  = viewport.width;
+    canvas.height = viewport.height;
+
+    wrap = document.createElement('div');
+    wrap.className = 'page-canvas-wrap';
+    wrap.dataset.page = num;
+    wrap.appendChild(canvas);
+    canvasArea.appendChild(wrap);
+
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+    wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    updateControls();
+  }
+
+  async function preRenderPage(num) {
+    if (!pdfDoc || num < 1 || num > pdfDoc.numPages) return;
+    if (canvasArea.querySelector(`[data-page="${num}"]`)) return;
+
+    const page = await pdfDoc.getPage(num);
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width; canvas.height = viewport.height;
+    const wrap = document.createElement('div');
+    wrap.className = 'page-canvas-wrap'; wrap.dataset.page = num;
+    wrap.appendChild(canvas);
+    canvasArea.appendChild(wrap);
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+  }
+
+  function updateControls() {
+    if (!pdfDoc) return;
+    prevBtn.disabled = currentPage <= 1;
+    nextBtn.disabled = currentPage >= pdfDoc.numPages;
+    pageInput.value = currentPage;
+  }
+
+  /* ── Page controls ── */
+  prevBtn.addEventListener('click', () => goToPage(currentPage - 1));
+  nextBtn.addEventListener('click', () => goToPage(currentPage + 1));
+
+  pageInput.addEventListener('change', () => {
+    const n = parseInt(pageInput.value);
+    if (pdfDoc && n >= 1 && n <= pdfDoc.numPages) goToPage(n);
+  });
+
+  async function goToPage(n) {
+    if (!pdfDoc) return;
+    n = Math.max(1, Math.min(n, pdfDoc.numPages));
+    currentPage = n;
+    await renderPage(n);
+    preRenderPage(n + 1);
+    preRenderPage(n - 1);
+    updateControls();
+  }
+
+  /* ── Zoom ── */
+  zoomInBtn.addEventListener('click',  () => reScale(scale + 0.2));
+  zoomOutBtn.addEventListener('click', () => reScale(Math.max(0.4, scale - 0.2)));
+  zoomFitBtn.addEventListener('click', () => {
+    const areaW = canvasArea.clientWidth - 32;
+    if (!pdfDoc) return;
+    pdfDoc.getPage(currentPage).then(page => {
+      const vp = page.getViewport({ scale: 1 });
+      reScale(areaW / vp.width);
+    });
+  });
+
+  async function reScale(newScale) {
+    scale = newScale;
+    // Clear all rendered pages and re-render current
+    Array.from(canvasArea.children).forEach(el => {
+      if (!el.classList.contains('loading-screen')) el.remove();
+    });
+    await renderPage(currentPage);
+    preRenderPage(currentPage + 1);
+    preRenderPage(currentPage - 1);
+  }
+
+  /* ── Outline / TOC ── */
+  async function buildOutline(pdf) {
+    const outline = await pdf.getOutline();
+    outlineList.innerHTML = '';
+
+    if (!outline || outline.length === 0) {
+      outlineList.innerHTML = '<div class="outline-empty">此文件<br/>無目錄</div>';
+      return;
+    }
+
+    function addItems(items, level) {
+      items.forEach(item => {
+        const btn = document.createElement('button');
+        btn.className = `outline-item${level > 0 ? ` level-${level}` : ''}`;
+        btn.textContent = item.title;
+        btn.addEventListener('click', async () => {
+          if (item.dest) {
+            const dest = typeof item.dest === 'string'
+              ? await pdf.getDestination(item.dest)
+              : item.dest;
+            if (dest) {
+              const ref = dest[0];
+              const pageNum = await pdf.getPageIndex(ref) + 1;
+              goToPage(pageNum);
+            }
+          }
+        });
+        outlineList.appendChild(btn);
+        if (item.items && item.items.length) addItems(item.items, level + 1);
+      });
+    }
+    addItems(outline, 0);
+  }
+
+  outlineToggle.addEventListener('click', () => {
+    outlineOpen = !outlineOpen;
+    outlinePanel.classList.toggle('collapsed', !outlineOpen);
+    outlineToggle.classList.toggle('active', outlineOpen);
+  });
+
+  /* ── Keyboard nav ── */
+  document.addEventListener('keydown', e => {
+    if (document.getElementById('readerPage').classList.contains('hidden')) return;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') goToPage(currentPage + 1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   goToPage(currentPage - 1);
+  });
 </script>
 </body>
 </html>
