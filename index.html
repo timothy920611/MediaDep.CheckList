@@ -267,6 +267,9 @@
     const fallbackOpen = document.getElementById('fallbackOpen');
     const viewerFallback = document.getElementById('viewerFallback');
 
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
     let currentDoc = null;
 
     docs.forEach((doc, i) => {
@@ -287,12 +290,30 @@
     function openReader(id) {
       const doc = docs.find(d => d.id === id);
       if (!doc) return;
-      currentDoc = doc;
+      const src = encodeURI(doc.file);
 
+      // iPad / iPhone: open directly in a new tab for the most reliable PDF experience.
+      if (isIOS) {
+        const win = window.open(src, '_blank', 'noopener,noreferrer');
+        if (!win) {
+          homePage.classList.add('hidden');
+          readerPage.classList.remove('hidden');
+          currentDoc = doc;
+          readerTitle.textContent = doc.file + '（請改用新視窗開啟）';
+          openNewTab.href = src;
+          downloadBtn.href = src;
+          downloadBtn.download = doc.file;
+          fallbackOpen.onclick = () => window.open(src, '_blank', 'noopener,noreferrer');
+          viewerFallback.style.display = 'flex';
+          pdfFrame.src = 'about:blank';
+        }
+        return;
+      }
+
+      currentDoc = doc;
       homePage.classList.add('hidden');
       readerPage.classList.remove('hidden');
 
-      const src = encodeURI(doc.file);
       readerTitle.textContent = doc.file;
       openNewTab.href = src;
       downloadBtn.href = src;
