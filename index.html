@@ -417,114 +417,27 @@
   ];
 
   // State
-  let pdfDoc      = null;
-  let currentId   = null;
+  let pdfDoc = null;
+  let currentId = null;
   let currentPage = 1;
-  let scale       = 1.4;
-  let renderTask  = null;
+  let scale = 1.4;
   let outlineOpen = false;
-
-  // Minimal link service so PDF annotations / TOC links remain clickable.
-  const linkService = {
-    externalLinkEnabled: true,
-    externalLinkTarget: 0,
-    externalLinkRel: 'noopener noreferrer nofollow',
-    pdfDocument: null,
-
-    setDocument(pdfDocument) {
-      this.pdfDocument = pdfDocument;
-    },
-
-    async navigateTo(dest) {
-      if (!pdfDoc) return;
-      let resolved = dest;
-      if (typeof dest === 'string') {
-        resolved = await pdfDoc.getDestination(dest);
-      }
-      if (!resolved || !resolved.length) return;
-
-      const target = resolved[0];
-      let pageNum = null;
-
-      if (typeof target === 'object' && target !== null) {
-        pageNum = (await pdfDoc.getPageIndex(target)) + 1;
-      } else if (Number.isInteger(target)) {
-        pageNum = target;
-      }
-
-      if (pageNum != null) {
-        await goToPage(pageNum);
-      }
-    },
-
-    goToDestination(dest) {
-      return this.navigateTo(dest);
-    },
-
-    getDestinationHash(dest) {
-      if (typeof dest === 'string') return `#${encodeURIComponent(dest)}`;
-      return '#';
-    },
-
-    getAnchorUrl(hash) {
-      return hash;
-    },
-
-    setHash(hash) {
-      if (typeof hash !== 'string') return;
-      const m = hash.match(/page=(\d+)/i);
-      if (m) goToPage(parseInt(m[1], 10));
-    },
-
-    addLinkAttributes(link, url, newWindow = false, enabled = true) {
-      if (!link) return;
-      link.href = url || '';
-      link.target = newWindow ? '_blank' : '_self';
-      link.rel = this.externalLinkRel;
-      link.disabled = !enabled;
-      if (!enabled) {
-        link.removeAttribute('href');
-      }
-    },
-
-    executeNamedAction(action) {
-      switch (action) {
-        case 'NextPage':
-          goToPage(currentPage + 1);
-          break;
-        case 'PrevPage':
-          goToPage(currentPage - 1);
-          break;
-        case 'FirstPage':
-          goToPage(1);
-          break;
-        case 'LastPage':
-          if (pdfDoc) goToPage(pdfDoc.numPages);
-          break;
-        default:
-          break;
-      }
-    },
-
-    cachePageRef(pageNum, pageRef) {
-      this._pageRefs ||= new Map();
-      this._pageRefs.set(`${pageRef.num}-${pageRef.gen}`, pageNum);
-    }
-  };
+  let scrollSyncRAF = null;
 
   // Elements
-  const canvasArea     = document.getElementById('canvasArea');
-  const loadingScreen  = document.getElementById('loadingScreen');
-  const pageInput      = document.getElementById('pageInput');
-  const pageInfo       = document.getElementById('pageInfo');
-  const prevBtn        = document.getElementById('prevBtn');
-  const nextBtn        = document.getElementById('nextBtn');
-  const zoomInBtn      = document.getElementById('zoomInBtn');
-  const zoomOutBtn     = document.getElementById('zoomOutBtn');
-  const zoomFitBtn     = document.getElementById('zoomFitBtn');
-  const outlinePanel   = document.getElementById('outlinePanel');
-  const outlineList    = document.getElementById('outlineList');
-  const outlineToggle  = document.getElementById('outlineToggle');
+  const canvasArea    = document.getElementById('canvasArea');
+  const loadingScreen = document.getElementById('loadingScreen');
+  const pageInput     = document.getElementById('pageInput');
+  const pageInfo      = document.getElementById('pageInfo');
+  const prevBtn       = document.getElementById('prevBtn');
+  const nextBtn       = document.getElementById('nextBtn');
+  const zoomInBtn     = document.getElementById('zoomInBtn');
+  const zoomOutBtn    = document.getElementById('zoomOutBtn');
+  const zoomFitBtn    = document.getElementById('zoomFitBtn');
+  const outlinePanel  = document.getElementById('outlinePanel');
+  const outlineList   = document.getElementById('outlineList');
+  const outlineToggle = document.getElementById('outlineToggle');
+  const loadingLabel  = loadingScreen.querySelector('.loading-label');
 
   /* ── Home cards ── */
   const grid = document.getElementById('docGrid');
@@ -566,85 +479,193 @@
     document.getElementById('homePage').classList.remove('hidden');
   });
 
+  function clearViewer() {
+    Array.from(canvasArea.children).forEach(el => {
+      if (!el.classList.contains('loading-screen')) el.remove();
+    });
+    outlineList.innerHTML = '';
+  }
+
+  function setLoading(show, text = '載入中…') {
+    loadingLabel.textContent = text;
+    loadingScreen.classList.toggle('hide', !show);
+  }
+
+  function updateControls() {
+    if (!pdfDoc) return;
+    prevBtn.disabled = currentPage <= 1;
+    nextBtn.disabled = currentPage >= pdfDoc.numPages;
+    pageInput.value = currentPage;
+    pageInfo.textContent = `/ ${pdfDoc.numPages}`;
+  }
+
+  function syncPageFromScroll() {
+    if (!pdfDoc) return;
+    const areaTop = canvasArea.getBoundingClientRect().top + 12;
+    let bestPage = currentPage;
+    let bestDistance = Infinity;
+
+    document.querySelectorAll('.page-canvas-wrap').forEach(wrap => {
+      const rect = wrap.getBoundingClientRect();
+      const distance = Math.abs(rect.top - areaTop);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestPage = Number(wrap.dataset.page);
+      }
+    });
+
+    if (bestPage !== currentPage) {
+      currentPage = bestPage;
+      updateControls();
+    }
+  }
+
+  canvasArea.addEventListener('scroll', () => {
+    if (scrollSyncRAF) cancelAnimationFrame(scrollSyncRAF);
+    scrollSyncRAF = requestAnimationFrame(syncPageFromScroll);
+  });
+
+  async function resolveDestination(dest) {
+    if (!pdfDoc || !dest) return null;
+    const resolved = typeof dest === 'string' ? await pdfDoc.getDestination(dest) : dest;
+    if (!resolved || !resolved.length) return null;
+    const target = resolved[0];
+    if (typeof target === 'object' && target !== null) {
+      return (await pdfDoc.getPageIndex(target)) + 1;
+    }
+    if (Number.isInteger(target)) return target;
+    return null;
+  }
+
+  async function goToDestination(dest) {
+    const pageNum = await resolveDestination(dest);
+    if (pageNum) goToPage(pageNum);
+  }
+
   /* ── Load PDF ── */
   async function loadDoc(id) {
-    if (currentId === id) return;
+    if (currentId === id && pdfDoc) return;
     currentId = id;
+    currentPage = 1;
+    pdfDoc = null;
 
     const doc = docs.find(d => d.id === id);
+    if (!doc) return;
 
-    // Update tabs
     document.querySelectorAll('.tab-pill').forEach(b => b.classList.remove('active'));
     const activeTab = document.getElementById(`tab-${id}`);
     activeTab.classList.add('active');
     activeTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
 
-    // Header
     document.getElementById('readerTitle').textContent = doc.file;
     document.getElementById('openNewTab').href = doc.file;
     const dl = document.getElementById('downloadBtn');
-    dl.href = doc.file; dl.download = doc.file;
+    dl.href = doc.file;
+    dl.download = doc.file;
 
-    // Reset state
-    currentPage = 1;
-    pdfDoc = null;
     prevBtn.disabled = true;
     nextBtn.disabled = true;
     pageInput.value = 1;
+    pageInput.max = 1;
     pageInfo.textContent = '/ —';
-
-    // Clear canvases (keep loading screen)
-    Array.from(canvasArea.children).forEach(el => {
-      if (!el.classList.contains('loading-screen')) el.remove();
-    });
-    loadingScreen.classList.remove('hide');
-
-    // Clear outline
-    outlineList.innerHTML = '';
+    clearViewer();
+    setLoading(true, '載入中…');
 
     try {
       pdfDoc = await pdfjsLib.getDocument(doc.file).promise;
-      linkService.setDocument(pdfDoc);
       const total = pdfDoc.numPages;
-      pageInfo.textContent = `/ ${total}`;
       pageInput.max = total;
-      prevBtn.disabled = currentPage <= 1;
-      nextBtn.disabled = currentPage >= total;
+      pageInfo.textContent = `/ ${total}`;
 
-      loadingScreen.classList.add('hide');
+      for (let i = 1; i <= total; i++) {
+        loadingLabel.textContent = `載入中… (${i}/${total})`;
+        await renderPage(i, { scrollTo: false });
+      }
 
-      // Render first page immediately, others lazily
-      await renderPage(currentPage);
-      preRenderPage(currentPage + 1);
-
-      // Load outline
-      buildOutline(pdfDoc);
-
+      setLoading(false);
+      currentPage = 1;
+      updateControls();
+      await buildOutline(pdfDoc);
+      canvasArea.scrollTop = 0;
     } catch (e) {
-      loadingScreen.querySelector('.loading-label').textContent = '載入失敗，請重試';
+      setLoading(true, '載入失敗，請重試');
       console.error(e);
     }
   }
 
-  /* ── Render a single page ── */
-  async function renderPage(num) {
-    if (!pdfDoc) return;
+  function createLinkEl(annotation, viewport, pageNum) {
+    const rect = viewport.convertToViewportRectangle(annotation.rect);
+    const x1 = Math.min(rect[0], rect[2]);
+    const y1 = Math.min(rect[1], rect[3]);
+    const x2 = Math.max(rect[0], rect[2]);
+    const y2 = Math.max(rect[1], rect[3]);
 
-    // Check if canvas for this page already exists
-    let wrap = canvasArea.querySelector(`[data-page="${num}"]`);
-    if (wrap) {
-      wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
+    const link = document.createElement('a');
+    link.style.left = `${x1}px`;
+    link.style.top = `${y1}px`;
+    link.style.width = `${x2 - x1}px`;
+    link.style.height = `${y2 - y1}px`;
+    link.style.position = 'absolute';
+    link.style.display = 'block';
+    link.style.pointerEvents = 'auto';
+    link.style.background = 'transparent';
+    link.style.cursor = 'pointer';
+    link.setAttribute('aria-label', annotation.contents || '連結');
+
+    if (annotation.url) {
+      link.href = annotation.url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      return link;
+    }
+
+    if (annotation.dest) {
+      link.href = '#';
+      link.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await goToDestination(annotation.dest);
+      });
+      return link;
+    }
+
+    if (annotation.action === 'GoToPage' && annotation.dest) {
+      link.href = '#';
+      link.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await goToDestination(annotation.dest);
+      });
+      return link;
+    }
+
+    if (annotation.action === 'URI' && annotation.url) {
+      link.href = annotation.url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      return link;
+    }
+
+    link.href = '#';
+    return link;
+  }
+
+  /* ── Render a single page ── */
+  async function renderPage(num, { scrollTo = false } = {}) {
+    if (!pdfDoc) return null;
+
+    const existing = canvasArea.querySelector(`[data-page="${num}"]`);
+    if (existing) {
+      if (scrollTo) existing.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return existing;
     }
 
     const page = await pdfDoc.getPage(num);
     const viewport = page.getViewport({ scale });
 
     const canvas = document.createElement('canvas');
-    canvas.width  = viewport.width;
+    canvas.width = viewport.width;
     canvas.height = viewport.height;
 
-    wrap = document.createElement('div');
+    const wrap = document.createElement('div');
     wrap.className = 'page-canvas-wrap';
     wrap.dataset.page = num;
 
@@ -655,70 +676,32 @@
     wrap.appendChild(annotationLayer);
     canvasArea.appendChild(wrap);
 
-    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    await page.render({
+      canvasContext: canvas.getContext('2d'),
+      viewport,
+    }).promise;
 
     try {
       const annotations = await page.getAnnotations({ intent: 'display' });
-      if (pdfjsLib.AnnotationLayer && annotations) {
-        annotationLayer.innerHTML = '';
-        pdfjsLib.AnnotationLayer.render({
-          annotations,
-          div: annotationLayer,
-          page,
-          viewport,
-          linkService
-        });
-      }
+      const linkAnnotations = annotations.filter(a => a.subtype === 'Link');
+      annotationLayer.innerHTML = '';
+      linkAnnotations.forEach(annotation => {
+        const link = createLinkEl(annotation, viewport, num);
+        annotationLayer.appendChild(link);
+      });
     } catch (err) {
       console.warn('Annotation render skipped:', err);
     }
 
-    wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    updateControls();
-  }
-
-  async function preRenderPage(num) {
-    if (!pdfDoc || num < 1 || num > pdfDoc.numPages) return;
-    if (canvasArea.querySelector(`[data-page="${num}"]`)) return;
-
-    const page = await pdfDoc.getPage(num);
-    const viewport = page.getViewport({ scale });
-    const canvas = document.createElement('canvas');
-    canvas.width = viewport.width; canvas.height = viewport.height;
-    const wrap = document.createElement('div');
-    wrap.className = 'page-canvas-wrap'; wrap.dataset.page = num;
-
-    const annotationLayer = document.createElement('div');
-    annotationLayer.className = 'annotationLayer';
-
-    wrap.appendChild(canvas);
-    wrap.appendChild(annotationLayer);
-    canvasArea.appendChild(wrap);
-
-    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-
-    try {
-      const annotations = await page.getAnnotations({ intent: 'display' });
-      if (pdfjsLib.AnnotationLayer && annotations) {
-        annotationLayer.innerHTML = '';
-        pdfjsLib.AnnotationLayer.render({
-          annotations,
-          div: annotationLayer,
-          page,
-          viewport,
-          linkService
-        });
-      }
-    } catch (err) {
-      console.warn('Annotation render skipped:', err);
+    if (scrollTo) {
+      wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+
+    return wrap;
   }
 
-  function updateControls() {
-    if (!pdfDoc) return;
-    prevBtn.disabled = currentPage <= 1;
-    nextBtn.disabled = currentPage >= pdfDoc.numPages;
-    pageInput.value = currentPage;
+  function pageElement(n) {
+    return canvasArea.querySelector(`[data-page="${n}"]`);
   }
 
   /* ── Page controls ── */
@@ -726,7 +709,7 @@
   nextBtn.addEventListener('click', () => goToPage(currentPage + 1));
 
   pageInput.addEventListener('change', () => {
-    const n = parseInt(pageInput.value);
+    const n = parseInt(pageInput.value, 10);
     if (pdfDoc && n >= 1 && n <= pdfDoc.numPages) goToPage(n);
   });
 
@@ -734,10 +717,12 @@
     if (!pdfDoc) return;
     n = Math.max(1, Math.min(n, pdfDoc.numPages));
     currentPage = n;
-    await renderPage(n);
-    preRenderPage(n + 1);
-    preRenderPage(n - 1);
     updateControls();
+
+    const el = pageElement(n);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }
 
   /* ── Zoom ── */
@@ -753,14 +738,26 @@
   });
 
   async function reScale(newScale) {
+    if (!pdfDoc) return;
+    const keepPage = currentPage;
     scale = newScale;
-    // Clear all rendered pages and re-render current
-    Array.from(canvasArea.children).forEach(el => {
-      if (!el.classList.contains('loading-screen')) el.remove();
-    });
-    await renderPage(currentPage);
-    preRenderPage(currentPage + 1);
-    preRenderPage(currentPage - 1);
+    clearViewer();
+    setLoading(true, '重新縮放中…');
+
+    try {
+      for (let i = 1; i <= pdfDoc.numPages; i++) {
+        loadingLabel.textContent = `重新縮放中… (${i}/${pdfDoc.numPages})`;
+        await renderPage(i, { scrollTo: false });
+      }
+      setLoading(false);
+      currentPage = keepPage;
+      updateControls();
+      const el = pageElement(keepPage);
+      if (el) el.scrollIntoView({ behavior: 'auto', block: 'start' });
+    } catch (err) {
+      console.error(err);
+      setLoading(true, '縮放失敗，請重試');
+    }
   }
 
   /* ── Outline / TOC ── */
@@ -773,27 +770,22 @@
       return;
     }
 
+    async function jumpToItem(item) {
+      if (!item.dest) return;
+      await goToDestination(item.dest);
+    }
+
     function addItems(items, level) {
       items.forEach(item => {
         const btn = document.createElement('button');
         btn.className = `outline-item${level > 0 ? ` level-${level}` : ''}`;
         btn.textContent = item.title;
-        btn.addEventListener('click', async () => {
-          if (item.dest) {
-            const dest = typeof item.dest === 'string'
-              ? await pdf.getDestination(item.dest)
-              : item.dest;
-            if (dest) {
-              const ref = dest[0];
-              const pageNum = await pdf.getPageIndex(ref) + 1;
-              goToPage(pageNum);
-            }
-          }
-        });
+        btn.addEventListener('click', () => jumpToItem(item));
         outlineList.appendChild(btn);
         if (item.items && item.items.length) addItems(item.items, level + 1);
       });
     }
+
     addItems(outline, 0);
   }
 
