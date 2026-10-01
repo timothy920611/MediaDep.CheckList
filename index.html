@@ -260,7 +260,7 @@
             </div>
             <div class="hero-text">
               <h2>確認表單 Check List</h2>
-              <p id="heroSub">互動版 · 9 個區塊</p>
+              <p id="heroSub">互動版 · 5 個區塊</p>
             </div>
             <span class="pill" id="heroPill">開始</span>
           </a>
@@ -326,8 +326,8 @@
       { id: 'zoominst', file: 'zoominst_CH.pdf', title: 'Zoom 線上視頻會議指示', label: 'Zoom', pages: 14, bytes: 555270, tile: '#007aff', glyph: 'video' },
     ];
     const CHECKLIST = { id: 'checklist', file: 'checklist-interactive.html', title: '確認表單 Check List' };
-    const CL_KEY = 'media-dept-interactive-checklist-v1';
-    const CL_SECTIONS = 9;
+    const CL_KEY = 'media-dept-interactive-checklist-v2';
+    const CL_SECTIONS = 5;
 
     const GLYPHS = {
       play:    '<path d="M8 5.5v13l10-6.5z" fill="currentColor"/>',
@@ -424,7 +424,6 @@
 
       setView('reader', animate);
       if (push) history.pushState({ doc: doc.id }, '', '#' + doc.id);
-      $('backBtn').focus({ preventScroll: true });
     }
 
     function closeDoc({ animate = true } = {}) {
@@ -470,7 +469,7 @@
 
     /* ── Check List 進度環 ── */
     function refreshHero() {
-      let checked = 0, total = 30;
+      let checked = 0, total = 21;
       try {
         const s = JSON.parse(localStorage.getItem(CL_KEY) || '{}');
         checked = Object.values(s).filter(Boolean).length;
