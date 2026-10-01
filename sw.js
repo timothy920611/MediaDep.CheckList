@@ -4,7 +4,7 @@
  * - HTML：優先抓網路（確保拿到最新版），沒網路才用快取。
  * 更新網站外觀後，把 SHELL_VERSION 改一下即可。
  */
-const SHELL_VERSION = 'shell-2026-10-02c';
+const SHELL_VERSION = 'shell-2026-10-02d';
 const DOC_CACHE = 'docs-v1';
 const SHELL_FILES = ['./', './index.html', './checklist-interactive.html', './checklist-stage.html', './checklist-mic.html'];
 
@@ -13,6 +13,7 @@ const cachedKeys = new Set();
 const keysLoaded = caches.open(DOC_CACHE).then((c) => c.keys()).then((reqs) => reqs.forEach((r) => cachedKeys.add(r.url))).catch(() => {});
 
 const jobs = new Map(); // url -> { done, ctrl }（避免同一份 PDF 同時下載兩次）
+const viewed = new Set(); // 瀏覽器剛自己下載過的文件（補存時可以直接用瀏覽器暫存）
 const queue = [];       // 等著背景預載的文件
 let pumping = false;
 let pausedUntil = 0;    // 使用者正在看還沒存的文件時，背景預載先暫停到這個時間
@@ -38,14 +39,27 @@ function docKey(url) {
   return u.href;
 }
 
-function download(key) {
+// 下載一份 PDF 存到裝置。
+// - 檢查新版（revalidate = 裝置上那份）：帶它的 ETag 問伺服器，沒變只回 304，不靠瀏覽器暫存
+//   （iPhone 常會清掉瀏覽器暫存，清掉後原本每次開文件都會在背景整份重抓）。
+// - 瀏覽器剛自己下載過（viewed）：用瀏覽器暫存，多半只回 304，不必再下載一次。
+// - 其他：直接下載，不在瀏覽器暫存多存一份（反正存到 DOC_CACHE）。
+function download(key, revalidate = null) {
   if (jobs.has(key)) return jobs.get(key).done;
   const ctrl = new AbortController();
   const done = (async () => {
-    const res = await fetch(key, { cache: 'no-cache', signal: ctrl.signal }); // 有 ETag 時只會回 304，不會重新下載整份
+    const headers = {};
+    if (revalidate) {
+      const etag = revalidate.headers.get('etag'), modified = revalidate.headers.get('last-modified');
+      if (etag) headers['If-None-Match'] = etag;
+      else if (modified) headers['If-Modified-Since'] = modified;
+    }
+    const cache = !revalidate && viewed.has(key) ? 'no-cache' : 'no-store';
+    const res = await fetch(key, { cache, headers, signal: ctrl.signal });
     if (res.ok && res.status === 200) {
       await (await caches.open(DOC_CACHE)).put(key, res);
       cachedKeys.add(key);
+      viewed.delete(key);
       await notifyCached(key);
     }
   })().catch((e) => {
@@ -58,7 +72,7 @@ function download(key) {
 async function serveCached(event, key) {
   const hit = await (await caches.open(DOC_CACHE)).match(key);
   if (hit) {
-    event.waitUntil(download(key).catch(() => {})); // 背景檢查新版
+    event.waitUntil(download(key, hit).catch(() => {})); // 背景檢查新版
     return hit;
   }
   cachedKeys.delete(key);
@@ -70,9 +84,10 @@ async function serveCached(event, key) {
 function yieldTo(key) {
   for (const job of jobs.values()) job.ctrl.abort();
   pausedUntil = Date.now() + PAUSE_MS;
+  viewed.add(key);
   const i = queue.indexOf(key);
   if (i >= 0) queue.splice(i, 1);
-  queue.unshift(key); // 瀏覽器剛下載過，補存時多半只會回 304、直接用瀏覽器快取
+  queue.unshift(key);
   return pump();
 }
 
@@ -97,7 +112,7 @@ async function networkFirst(request) {
   const cache = await caches.open(SHELL_VERSION);
   try {
     const res = await fetch(request);
-    if (res.ok && res.type === 'basic') cache.put(request, res.clone());
+    if (res.ok && res.type === 'basic') cache.put(docKey(request.url), res.clone()); // 去掉 ?query，同一頁只存一份
     return res;
   } catch (e) {
     return (await cache.match(request, { ignoreSearch: true })) || (await cache.match('./index.html')) || Response.error();
