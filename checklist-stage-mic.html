@@ -244,21 +244,21 @@
         "與公眾演講講者確認麥克風高度",
         "預先調好誦讀弟兄麥克風"
       ]},
-      { key: 'mic-before', phase: '聚會前', title: '麥克風傳遞員', tag: 'Mic Runner', items: [
-        "請最後確認無線麥克風電量"
-      ]},
       { key: 'stage-during', phase: '聚會中', title: '講台弟兄', tag: 'During · Stage', items: [
         "留意麥克風高度",
         "留意示範麥克風擺放方向"
       ]},
-      { key: 'mic-during', phase: '聚會中', title: '麥克風傳遞員', tag: 'During · Mic', items: [
+      { key: 'mic', phase: '聚會前・中', title: '麥克風傳遞員', tag: 'Mic Runner', items: [
+        "請最後確認無線麥克風電量",
         "保護無線麥克風，請勿將麥克風放置在容易掉落的地方，如椅子上。",
         "留意是否有問答討論的環節",
         "確認評論的人是否有聲音，並隨時支援"
       ]}
     ];
 
-    const STORAGE_KEY = 'media-dept-stage-mic-checklist-v1';
+    const STORAGE_KEY = 'media-dept-stage-mic-checklist-v2';
+    // v1 有兩個麥克風傳遞員區塊，舊的勾選紀錄直接清掉
+    try { localStorage.removeItem('media-dept-stage-mic-checklist-v1'); localStorage.removeItem('media-dept-stage-mic-checklist-v1:total'); } catch (e) {}
     const $ = (id) => document.getElementById(id);
     const list = $('list'), dots = $('dots');
     const totalItems = sections.reduce((n, s) => n + s.items.length, 0);
