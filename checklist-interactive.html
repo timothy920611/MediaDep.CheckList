@@ -77,6 +77,10 @@
     .top-row { height: 52px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
     .embedded .top-row { display: none; }
     .embedded .top { padding-top: 12px; }
+    /* 放在首頁閱讀器裡（iframe）時：不用毛玻璃、不預先建圖層——iPhone Safari 在會滑動的畫面裡
+       疊太多這種效果，繪圖記憶體不夠就會整塊畫成黑色（參考版本也是這樣關掉的） */
+    .embedded .material, .embedded .sec-head::before { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+    .embedded .sec-title { will-change: auto; }
     .back { justify-self: start; display: inline-flex; align-items: center; gap: 4px; height: 44px; margin-left: -8px; padding: 0 8px; color: var(--tint); }
     .back svg { width: 12px; height: 20px; }
     .title { display: inline-flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 600; white-space: nowrap; }
@@ -447,6 +451,10 @@
       [...dots.children].forEach((d, i) => { d.classList.toggle('cur', i === idx); d.setAttribute('aria-current', i === idx ? 'step' : 'false'); });
       $('prevBtn').disabled = idx === 0 && scrollY < 4;
       $('nextBtn').disabled = idx === secs.length - 1;
+      // 保險：已經進到畫面的一定顯示，不只靠 IntersectionObserver
+      document.querySelectorAll('.reveal.waiting').forEach((el) => {
+        if (el.getBoundingClientRect().top < innerHeight) el.classList.remove('waiting');
+      });
     }
     addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(onScroll); } }, { passive: true });
     addEventListener('resize', () => { measure(); onScroll(); });
@@ -460,11 +468,15 @@
       scrollTo({ top: stopFor(i), behavior: instant || reduceMotion.matches ? 'auto' : 'smooth' });
     }
 
-    /* 畫面外的清單進入時才淡入；一開始就看得到的不藏 */
+    /* 畫面外的清單進入時才淡入；一開始就看得到的不藏。
+       放在首頁閱讀器裡（iframe）時不用這個效果：iPhone Safari 在 iframe 裡捲動 / 偵測進入畫面不一定準，
+       打勾後再打開（會自動捲到下一區）時，內容可能一直停在透明，看起來就是黑屏。 */
     let io;
+    const embedded = document.documentElement.classList.contains('embedded');
     function setupReveal() {
       if (io) io.disconnect();
-      if (!('IntersectionObserver' in window) || reduceMotion.matches) return;
+      document.querySelectorAll('.reveal.waiting').forEach((el) => el.classList.remove('waiting'));
+      if (embedded || !('IntersectionObserver' in window) || reduceMotion.matches) return;
       io = new IntersectionObserver((entries) => entries.forEach((e) => {
         if (e.isIntersecting) { e.target.classList.remove('waiting'); io.unobserve(e.target); }
       }), { threshold: 0.08 });
