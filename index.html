@@ -219,6 +219,9 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .loader strong { font-size: 17px; font-weight: 600; }
     .loader span { font-size: 13px; color: var(--label2); font-variant-numeric: tabular-nums; }
+    .progress { width: 180px; height: 4px; border-radius: 2px; background: var(--fill); overflow: hidden; visibility: hidden; }
+    .progress.on { visibility: visible; }
+    .progress i { display: block; height: 100%; width: 100%; background: var(--tint-strong); transform: scaleX(var(--p, 0)); transform-origin: left; transition: transform .2s linear; }
 
     .fallback { display: none; }
     .fallback.on { display: grid; }
@@ -308,6 +311,7 @@
           </svg>
           <strong id="loaderTitle">正在開啟</strong>
           <span id="loaderMeta"></span>
+          <div class="progress" id="progress" aria-hidden="true"><i></i></div>
         </div>
         <div class="loader fallback" id="fallback">
           <strong>這個瀏覽器無法直接顯示 PDF</strong>
@@ -322,7 +326,7 @@
   (() => {
     // 頁數與大小只用來顯示；替換 PDF 後記得一起更新
     const DOCS = [
-      { id: 'avsupport', file: 'avsupport_CH.pdf', title: '會眾聚會影音支援注意事項', label: '注意事項 · OBS', pages: 11, bytes: 860619, tile: '#ff3b30', glyph: 'notes' },
+      { id: 'avsupport', file: 'avsupport_CH.pdf', title: '會眾聚會影音支援注意事項', label: '注意事項 · OBS', pages: 11, bytes: 866294, tile: '#ff3b30', glyph: 'notes' },
       { id: 'S-144',    file: 'S-144_CH.pdf',    title: '在聚會時播放影音資料',           pages: 19, bytes: 2019423, tile: '#ff9500', glyph: 'play' },
       { id: 'S-178',    file: 'S-178_CH.pdf',    title: '給視頻會議公眾演講講者的影音指南', pages: 3,  bytes: 360585,  tile: '#5856d6', glyph: 'mic' },
       { id: 'S-132',    file: 'S-132_CH.pdf',    title: '王國聚會所影音系統電腦設置指南',   pages: 17, bytes: 1273347, tile: '#8e8e93', glyph: 'desktop' },
@@ -402,7 +406,7 @@
       if (!urls.length) return;
       urls.forEach((u) => warmed.add(u));
       const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
-      if (sw) sw.postMessage({ type: 'warm', urls });
+      if (sw) sw.postMessage({ type: 'warm', urls, front: true });
       else urls.forEach((u) => fetch(u, { priority: 'low' }).then((r) => r.blob()).catch(() => {}));
     }
     ['pointerenter', 'pointerdown', 'focusin'].forEach((type) =>
@@ -413,6 +417,9 @@
 
     /* ── 導覽（支援瀏覽器返回鍵、#S-144 直接連結） ── */
     let frame = null, unloadTimer = 0, loadTimer = 0;
+    // 第一次開啟（還沒存到裝置）時，PDF 閱讀器要整份下載完才畫得出來 → loader 留著顯示進度，下載完才收
+    let downloading = Promise.resolve(false), downloaded = false;
+    const hideLoader = () => { loader.classList.remove('on'); clearTimeout(loadTimer); };
 
     function setView(name, animate) {
       app.classList.toggle('no-anim', !animate || document.hidden);
@@ -433,6 +440,8 @@
       $('openBtn').hidden = isHtml(doc);
       $('loaderTitle').textContent = '正在開啟 ' + (doc.label || doc.id || '');
       $('loaderMeta').textContent = doc.bytes ? `${doc.pages} 頁 · ${mb(doc.bytes)}` : '';
+      $('progress').classList.remove('on');
+      $('progress').style.setProperty('--p', 0);
       fallback.classList.remove('on');
 
       // 每次換一個新的 iframe：不會在瀏覽紀錄裡留下多餘的「上一頁」
@@ -443,13 +452,32 @@
         frame.dataset.src = doc.file;
         frame.src = doc.file;
         loader.classList.add('on');
-        frame.addEventListener('load', () => { loader.classList.remove('on'); clearTimeout(loadTimer); }, { once: true });
-        loadTimer = setTimeout(() => loader.classList.remove('on'), 20000);
+        downloaded = false;
+        downloading = !isHtml(doc) && 'caches' in window && navigator.serviceWorker && navigator.serviceWorker.controller
+          ? caches.match(new URL(doc.file, location.href).href).then((hit) => !hit, () => false)
+          : Promise.resolve(false);
+        const f = frame;
+        frame.addEventListener('load', () => downloading.then((d) => { if (frame === f && (!d || downloaded)) hideLoader(); }), { once: true });
+        loadTimer = setTimeout(hideLoader, 20000);
         viewer.appendChild(frame);
       }
 
       setView('reader', animate);
       if (push) history.pushState({ doc: doc.id }, '', '#' + doc.id);
+    }
+
+    // 第一次開啟時 Service Worker 會回報下載進度
+    function onProgress({ url, loaded, total, done }) {
+      if (!frame || app.dataset.view !== 'reader' || new URL(frame.dataset.src, location.href).href !== url) return;
+      const doc = DOCS.find((d) => d.file === frame.dataset.src);
+      total = total || (doc && doc.bytes) || loaded || 1;
+      const pct = done ? 100 : Math.min(99, Math.floor(loaded / total * 100));
+      $('progress').classList.add('on');
+      $('progress').style.setProperty('--p', pct / 100);
+      $('loaderMeta').textContent = done ? '下載完成，正在顯示…' : `已下載 ${pct}% · ${mb(loaded)} / ${mb(total)}`;
+      clearTimeout(loadTimer);
+      if (done) { downloaded = true; loadTimer = setTimeout(hideLoader, 400); } // 留一點時間給閱讀器畫第一頁
+      else loadTimer = setTimeout(hideLoader, 20000); // 還在下載就不因逾時收掉；卡住 20 秒沒進度才收
     }
 
     function closeDoc({ animate = true } = {}) {
@@ -538,7 +566,10 @@
     /* ── Service Worker：快取 PDF ── */
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
       navigator.serviceWorker.register('sw.js').catch(() => {});
-      navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'cached') refreshOffline(); });
+      navigator.serviceWorker.addEventListener('message', (e) => {
+        if (e.data && e.data.type === 'cached') refreshOffline();
+        if (e.data && e.data.type === 'progress') onProgress(e.data);
+      });
       navigator.serviceWorker.addEventListener('controllerchange', refreshOffline);
       refreshOffline();
 
