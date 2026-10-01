@@ -207,28 +207,6 @@
 
     .viewer { position: relative; flex: 1; margin-top: calc(var(--nav-h) + env(safe-area-inset-top)); background: var(--bg); }
     .viewer iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--bg); }
-    .pages {
-      position: absolute; inset: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
-      padding: 12px 0 calc(24px + env(safe-area-inset-bottom));
-    }
-    .pages[hidden] { display: none; }
-    .page { position: relative; margin: 0 auto 12px; background: #fff; border-radius: 3px; box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.08); overflow: hidden; }
-    .page canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-    .page::before { /* 還沒畫好的頁先淡淡顯示頁碼，不會只是一張白紙 */
-      content: attr(data-n); position: absolute; inset: 0; display: grid; place-items: center;
-      font-size: 34px; font-weight: 600; color: rgba(60, 60, 67, .16); font-variant-numeric: tabular-nums;
-    }
-    .page.done::before { content: none; }
-    .page .links { position: absolute; inset: 0; }
-    .page .links a { position: absolute; }
-    .page-pill {
-      position: absolute; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 1;
-      transform: translateX(-50%); padding: 6px 12px; border-radius: 999px;
-      background: rgba(0,0,0,.62); color: #fff; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums;
-      -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-      opacity: 0; transition: opacity .35s; pointer-events: none;
-    }
-    .page-pill.on { opacity: 1; transition-duration: .15s; }
 
     .loader {
       position: absolute; inset: 0; z-index: 2;
@@ -241,9 +219,6 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .loader strong { font-size: 17px; font-weight: 600; }
     .loader span { font-size: 13px; color: var(--label2); font-variant-numeric: tabular-nums; }
-    .progress { width: 180px; height: 4px; border-radius: 2px; background: var(--fill); overflow: hidden; visibility: hidden; }
-    .progress.on { visibility: visible; }
-    .progress i { display: block; height: 100%; width: 100%; background: var(--tint-strong); transform: scaleX(var(--p, 0)); transform-origin: left; transition: transform .2s linear; }
 
     .fallback { display: none; }
     .fallback.on { display: grid; }
@@ -318,8 +293,6 @@
         </div>
       </header>
       <div class="viewer" id="viewer">
-        <div class="pages" id="pages" hidden></div>
-        <div class="page-pill" id="pagePill" aria-hidden="true"></div>
         <div class="loader" id="loader" role="status" aria-live="polite">
           <svg class="spinner" viewBox="0 0 28 28" aria-hidden="true">
             <g stroke="currentColor" stroke-width="2.6" stroke-linecap="round">
@@ -335,10 +308,9 @@
           </svg>
           <strong id="loaderTitle">正在開啟</strong>
           <span id="loaderMeta"></span>
-          <div class="progress" id="progress" aria-hidden="true"><i></i></div>
         </div>
         <div class="loader fallback" id="fallback">
-          <strong>無法在這裡顯示 PDF</strong>
+          <strong>這個瀏覽器無法直接顯示 PDF</strong>
           <span>改用新分頁開啟，或直接下載。</span>
           <a class="btn-filled" id="fallbackOpen" href="#" target="_blank" rel="noopener">在新分頁開啟</a>
         </div>
@@ -381,7 +353,7 @@
     const viewer = $('viewer'), loader = $('loader'), fallback = $('fallback');
 
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    // PDF.js 載不到時的備案：iOS 的 iframe 只會顯示 PDF 第一頁、Android 沒有內建 PDF 檢視器 → 請使用者開新分頁
+    // iOS 的 iframe 只會顯示 PDF 第一頁；Android 沒有內建 PDF 檢視器 → 直接交給系統開
     const inlinePdf = !isIOS && navigator.pdfViewerEnabled !== false;
 
     const mb = (b) => b >= 1e6 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB';
@@ -405,7 +377,7 @@
 
     /* ── 文件列表 ── */
     $('docList').innerHTML = DOCS.map((d) => `
-      <li><a class="row" href="${d.file}" data-id="${d.id}">
+      <li><a class="row" href="${d.file}" data-id="${d.id}" ${inlinePdf ? '' : 'target="_blank" rel="noopener"'}>
         <span class="tile" style="--tile:${d.tile}"><svg viewBox="0 0 24 24" aria-hidden="true">${GLYPHS[d.glyph]}</svg></span>
         <span class="row-text">
           <span class="row-title">${d.title}</span>
@@ -417,276 +389,27 @@
     document.addEventListener('click', (e) => {
       const a = e.target.closest('a[data-id]');
       if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const doc = byId(a.dataset.id);
+      if (!isHtml(doc) && !inlinePdf) return; // 讓瀏覽器用新分頁開
       e.preventDefault();
-      openDoc(byId(a.dataset.id));
+      openDoc(doc);
     });
 
-    /* ── 預先載入：滑鼠移過去 / 手指按下的那一刻就開始準備 ── */
+    /* ── 預先載入：滑鼠移過去 / 手指按下的那一刻就開始下載 ── */
     const warmed = new Set();
     function warm(urls) {
-      loadPdfjs().catch(() => {});
       urls = urls.filter((u) => !warmed.has(u));
       if (!urls.length) return;
       urls.forEach((u) => warmed.add(u));
       const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
-      if (sw) sw.postMessage({ type: 'warm', urls, front: true });
+      if (sw) sw.postMessage({ type: 'warm', urls });
+      else urls.forEach((u) => fetch(u, { priority: 'low' }).then((r) => r.blob()).catch(() => {}));
     }
     ['pointerenter', 'pointerdown', 'focusin'].forEach((type) =>
       $('docList').addEventListener(type, (e) => {
         const a = e.target.closest && e.target.closest('a[data-id]');
         if (a) warm([a.getAttribute('href')]);
       }, true));
-
-    /* ── PDF 閱讀器（PDF.js）──
-     * 瀏覽器內建的 PDF 檢視器要整份下載完才顯示；PDF.js 會分段下載，
-     * 拿到第一頁需要的部分就先畫出來，其他頁捲到附近才畫（也比較省記憶體）。 */
-    let pdfjsReady = null, pdfWorker = null;
-    function loadPdfjs() {
-      if (!pdfjsReady) {
-        pdfjsReady = new Promise((resolve, reject) => {
-          const s = document.createElement('script');
-          s.src = 'vendor/pdfjs/pdf.min.js';
-          s.onload = () => (window.pdfjsLib ? resolve(window.pdfjsLib) : reject(new Error('pdf.js')));
-          s.onerror = reject;
-          document.head.appendChild(s);
-        }).then((lib) => {
-          lib.GlobalWorkerOptions.workerSrc = 'vendor/pdfjs/pdf.worker.min.js';
-          pdfWorker = new lib.PDFWorker(); // 先把 worker 準備好，開文件時不用再等
-          return lib;
-        });
-        pdfjsReady.catch(() => { pdfjsReady = null; }); // 失敗（例如離線又沒存過）下次再試
-      }
-      return pdfjsReady;
-    }
-
-    const pagesEl = $('pages'), pill = $('pagePill');
-    const GAP = 12;
-    let pdf = null; // 目前開著的文件 { doc, task, pdfDoc, pages, width }
-    let curPage = 1, pillTimer = 0;
-    const outScale = Math.min(3, (window.devicePixelRatio || 1) * (matchMedia('(pointer: coarse)').matches ? 1.5 : 1)); // 手機多畫一點，放大看截圖才清楚
-
-    const pageWidth = () => {
-      const w = pagesEl.clientWidth || viewer.clientWidth;
-      return Math.max(200, Math.min(w - (w < 600 ? 16 : 48), 900));
-    };
-
-    async function openPdf(doc) {
-      closePdf();
-      const me = pdf = { doc, pages: [], width: pageWidth() };
-      pagesEl.hidden = false;
-      pagesEl.scrollTop = 0;
-      loader.classList.add('on');
-      let lib;
-      try { lib = await loadPdfjs(); } catch (e) { if (pdf === me) pdfFallback(doc); return; }
-      if (pdf !== me) return;
-
-      me.task = lib.getDocument({ url: doc.file, worker: pdfWorker, isEvalSupported: false });
-      me.task.onProgress = ({ loaded, total }) => {
-        if (pdf !== me || !loader.classList.contains('on')) return;
-        total = total || doc.bytes;
-        const pct = Math.min(99, Math.floor(loaded / total * 100));
-        $('progress').classList.add('on');
-        $('progress').style.setProperty('--p', pct / 100);
-        $('loaderMeta').textContent = `已下載 ${pct}% · ${mb(loaded)} / ${mb(total)}`;
-      };
-      try {
-        me.pdfDoc = await me.task.promise;
-        if (pdf !== me) return;
-        const first = await me.pdfDoc.getPage(1);
-        if (pdf !== me) return;
-        const base = first.getViewport({ scale: 1 });
-        me.ratio = base.height / base.width; // 還沒載入的頁先用第一頁的比例佔位
-        for (let n = 1; n <= me.pdfDoc.numPages; n++) {
-          const el = document.createElement('div');
-          el.className = 'page';
-          el.dataset.n = n;
-          el.setAttribute('aria-label', `第 ${n} 頁`);
-          pagesEl.appendChild(el);
-          me.pages.push({ n, el, ratio: me.ratio, page: n === 1 ? first : null, state: null });
-        }
-        layout(me);
-        await renderPage(me, me.pages[0]);
-        if (pdf !== me) return;
-        loader.classList.remove('on');
-        observe(me);
-        updatePill(false);
-      } catch (e) {
-        if (pdf === me) { console.error(e); pdfFallback(doc); }
-      }
-    }
-
-    function layout(me) {
-      me.width = pageWidth();
-      me.pages.forEach((p) => {
-        p.el.style.width = me.width + 'px';
-        p.el.style.height = Math.round(me.width * p.ratio) + 'px';
-      });
-    }
-
-    async function renderPage(me, p) {
-      if (p.state) return;
-      p.state = 'rendering';
-      try {
-        p.page = p.page || await me.pdfDoc.getPage(p.n);
-        if (pdf !== me || p.state !== 'rendering') return;
-        const base = p.page.getViewport({ scale: 1 });
-        const ratio = base.height / base.width;
-        if (Math.abs(ratio - p.ratio) > 0.001) { p.ratio = ratio; p.el.style.height = Math.round(me.width * ratio) + 'px'; }
-        const css = p.page.getViewport({ scale: me.width / base.width });
-        const vp = p.page.getViewport({ scale: me.width / base.width * outScale });
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.floor(vp.width);
-        canvas.height = Math.floor(vp.height);
-        p.task = p.page.render({ canvasContext: canvas.getContext('2d', { alpha: false }), viewport: vp });
-        await p.task.promise;
-        if (pdf !== me || p.state !== 'rendering') { canvas.width = canvas.height = 0; return; }
-        p.el.textContent = '';
-        p.el.appendChild(canvas);
-        p.el.classList.add('done');
-        p.state = 'done';
-        addLinks(me, p, css);
-      } catch (e) {
-        if (p.state === 'rendering') p.state = null;
-      } finally {
-        p.task = null;
-      }
-    }
-
-    function releasePage(p) {
-      if (p.task) p.task.cancel();
-      const c = p.el.querySelector('canvas');
-      if (c) c.width = c.height = 0; // 立刻還記憶體（iPhone 的 canvas 記憶體很有限）
-      p.el.textContent = '';
-      p.el.classList.remove('done');
-      p.state = null;
-    }
-
-    // 目錄、外部網址等連結
-    async function addLinks(me, p, vp) {
-      let anns;
-      try { anns = await p.page.getAnnotations({ intent: 'display' }); } catch (e) { return; }
-      if (pdf !== me || p.state !== 'done') return;
-      const layer = document.createElement('div');
-      layer.className = 'links';
-      anns.filter((a) => a.subtype === 'Link' && (a.url || a.dest)).forEach((a) => {
-        const [x1, y1, x2, y2] = vp.convertToViewportRectangle(a.rect);
-        const link = document.createElement('a');
-        Object.assign(link.style, {
-          left: Math.min(x1, x2) + 'px', top: Math.min(y1, y2) + 'px',
-          width: Math.abs(x2 - x1) + 'px', height: Math.abs(y2 - y1) + 'px',
-        });
-        if (a.url) {
-          link.href = a.url; link.target = '_blank'; link.rel = 'noopener';
-        } else {
-          link.href = '#';
-          link.setAttribute('aria-label', '跳到文件內的位置');
-          link.addEventListener('click', (e) => { e.preventDefault(); goToDest(me, a.dest); });
-        }
-        layer.appendChild(link);
-      });
-      if (layer.children.length) p.el.appendChild(layer);
-    }
-
-    async function goToDest(me, dest) {
-      try {
-        const d = typeof dest === 'string' ? await me.pdfDoc.getDestination(dest) : dest;
-        if (!Array.isArray(d) || pdf !== me) return;
-        const idx = typeof d[0] === 'object' ? await me.pdfDoc.getPageIndex(d[0]) : d[0];
-        const p = me.pages[idx];
-        if (!p) return;
-        let y = 0;
-        if (d[1] && d[1].name === 'XYZ' && typeof d[3] === 'number') {
-          const pg = p.page || await me.pdfDoc.getPage(p.n);
-          const base = pg.getViewport({ scale: 1 });
-          y = Math.max(0, (base.height - d[3]) * me.width / base.width - 8);
-        }
-        pagesEl.scrollTo({ top: p.el.offsetTop + y - GAP, behavior: 'smooth' });
-      } catch (e) {}
-    }
-
-    // 畫面附近的頁才畫；離很遠的頁收掉
-    let nearIO = null, farIO = null, queue = new Set(), rendering = false;
-    function observe(me) {
-      if (nearIO) nearIO.disconnect();
-      if (farIO) farIO.disconnect();
-      queue = new Set();
-      const byEl = new Map(me.pages.map((p) => [p.el, p]));
-      nearIO = new IntersectionObserver((entries) => {
-        entries.forEach((en) => { const p = byEl.get(en.target); if (en.isIntersecting) queue.add(p); else queue.delete(p); });
-        pump(me);
-      }, { root: pagesEl, rootMargin: '100% 0px' });
-      farIO = new IntersectionObserver((entries) => {
-        entries.forEach((en) => { if (!en.isIntersecting) releasePage(byEl.get(en.target)); });
-      }, { root: pagesEl, rootMargin: '300% 0px' });
-      me.pages.forEach((p) => { nearIO.observe(p.el); farIO.observe(p.el); });
-    }
-    async function pump(me) {
-      if (rendering) return;
-      rendering = true;
-      while (queue.size && pdf === me) {
-        let next = null; // 離目前這頁最近的先畫
-        for (const p of queue) if (!next || Math.abs(p.n - curPage) < Math.abs(next.n - curPage)) next = p;
-        queue.delete(next);
-        await renderPage(me, next);
-      }
-      rendering = false;
-    }
-
-    // 捲動時顯示「3 / 19」
-    function updatePill(show = true) {
-      if (!pdf || !pdf.pages.length) return;
-      const mid = pagesEl.scrollTop + pagesEl.clientHeight / 3;
-      let n = 1;
-      for (const p of pdf.pages) { if (p.el.offsetTop <= mid) n = p.n; else break; }
-      curPage = n;
-      pill.textContent = `${n} / ${pdf.pages.length}`;
-      if (!show) return;
-      pill.classList.add('on');
-      clearTimeout(pillTimer);
-      pillTimer = setTimeout(() => pill.classList.remove('on'), 1200);
-    }
-    let pillTick = false;
-    pagesEl.addEventListener('scroll', () => {
-      if (pillTick) return; pillTick = true;
-      requestAnimationFrame(() => { pillTick = false; updatePill(); });
-    }, { passive: true });
-
-    // 轉向 / 視窗大小改變 → 依新寬度重畫，停在同一頁
-    let resizeTimer = 0;
-    new ResizeObserver(() => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        const me = pdf;
-        if (!me || !me.pages.length || Math.abs(pageWidth() - me.width) < 2) return;
-        const keep = me.pages[curPage - 1];
-        const off = keep ? (pagesEl.scrollTop - keep.el.offsetTop) / keep.el.offsetHeight : 0;
-        me.pages.forEach(releasePage);
-        layout(me);
-        if (keep) pagesEl.scrollTop = keep.el.offsetTop + off * keep.el.offsetHeight;
-        observe(me);
-      }, 150);
-    }).observe(pagesEl);
-
-    function closePdf() {
-      const me = pdf;
-      pdf = null;
-      if (nearIO) nearIO.disconnect();
-      if (farIO) farIO.disconnect();
-      queue.clear();
-      pill.classList.remove('on');
-      if (!me) return;
-      me.pages.forEach(releasePage);
-      if (me.task) me.task.destroy().catch(() => {});
-      pagesEl.textContent = '';
-      pagesEl.hidden = true;
-    }
-
-    // PDF.js 載不到（舊瀏覽器、離線又沒存過）→ 改用瀏覽器內建的檢視器，或請使用者開新分頁
-    function pdfFallback(doc) {
-      closePdf();
-      if (inlinePdf) showFrame(doc);
-      else { loader.classList.remove('on'); fallback.classList.add('on'); }
-    }
 
     /* ── 導覽（支援瀏覽器返回鍵、#S-144 直接連結） ── */
     let frame = null, unloadTimer = 0, loadTimer = 0;
@@ -697,20 +420,6 @@
       home.inert = name !== 'home';
       reader.inert = name !== 'reader';
       if (!animate) requestAnimationFrame(() => requestAnimationFrame(() => app.classList.remove('no-anim')));
-    }
-
-    // 互動清單（HTML）用 iframe 開
-    function showFrame(doc) {
-      if (frame && frame.dataset.src === doc.file) return;
-      if (frame) frame.remove();
-      frame = document.createElement('iframe');
-      frame.title = doc.title;
-      frame.dataset.src = doc.file;
-      frame.src = doc.file;
-      loader.classList.add('on');
-      frame.addEventListener('load', () => { loader.classList.remove('on'); clearTimeout(loadTimer); }, { once: true });
-      loadTimer = setTimeout(() => loader.classList.remove('on'), 20000);
-      viewer.appendChild(frame);
     }
 
     function openDoc(doc, { animate = true, push = true } = {}) {
@@ -724,16 +433,19 @@
       $('openBtn').hidden = isHtml(doc);
       $('loaderTitle').textContent = '正在開啟 ' + (doc.label || doc.id || '');
       $('loaderMeta').textContent = doc.bytes ? `${doc.pages} 頁 · ${mb(doc.bytes)}` : '';
-      $('progress').classList.remove('on');
-      $('progress').style.setProperty('--p', 0);
       fallback.classList.remove('on');
 
-      if (isHtml(doc)) {
-        closePdf();
-        showFrame(doc);
-      } else if (!pdf || pdf.doc !== doc) {
-        if (frame) { frame.remove(); frame = null; }
-        openPdf(doc);
+      // 每次換一個新的 iframe：不會在瀏覽紀錄裡留下多餘的「上一頁」
+      if (!frame || frame.dataset.src !== doc.file) {
+        if (frame) frame.remove();
+        frame = document.createElement('iframe');
+        frame.title = doc.title;
+        frame.dataset.src = doc.file;
+        frame.src = doc.file;
+        loader.classList.add('on');
+        frame.addEventListener('load', () => { loader.classList.remove('on'); clearTimeout(loadTimer); }, { once: true });
+        loadTimer = setTimeout(() => loader.classList.remove('on'), 20000);
+        viewer.appendChild(frame);
       }
 
       setView('reader', animate);
@@ -743,14 +455,14 @@
     function closeDoc({ animate = true } = {}) {
       setView('home', animate);
       clearTimeout(unloadTimer);
-      unloadTimer = setTimeout(() => { if (frame) { frame.remove(); frame = null; } closePdf(); loader.classList.remove('on'); }, 550);
+      unloadTimer = setTimeout(() => { if (frame) { frame.remove(); frame = null; } loader.classList.remove('on'); }, 550);
       refreshHero();
     }
 
     function route({ animate }) {
       const id = decodeURIComponent(location.hash.slice(1));
       const doc = id && byId(id);
-      if (doc) openDoc(doc, { animate, push: false });
+      if (doc && (isHtml(doc) || inlinePdf)) openDoc(doc, { animate, push: false });
       else closeDoc({ animate });
     }
 
@@ -822,9 +534,6 @@
           : n ? `已有 ${n} 份文件存到這台裝置，開過的文件下次會秒開。` : '打開過的文件會存到這台裝置，下次秒開、離線也能看。';
       } catch (e) {}
     }
-
-    // 閒置時先把 PDF.js 載好，第一次開文件就不用等
-    (window.requestIdleCallback || ((fn) => setTimeout(fn, 1200)))(() => loadPdfjs().catch(() => {}));
 
     /* ── Service Worker：快取 PDF ── */
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
