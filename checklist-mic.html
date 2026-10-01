@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>視訊 & 音訊 Check List｜音控指南</title>
+  <title>麥克風傳遞 Check List｜音控指南</title>
   <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
   <link rel="icon" type="image/svg+xml" href="icons/favicon.svg" />
@@ -36,7 +36,7 @@
       --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
       --top: 64px;        /* 上方總進度列的高度（JS 會量） */
       --gutter: 16px;     /* 左右留白（JS 依視窗寬度計算，內容最寬 760px） */
-      --accent: #007aff;  /* 這個職責的代表色（首頁卡片同色） */
+      --accent: #0a9bb3;  /* 這個職責的代表色（首頁卡片同色） */
     }
     @media (prefers-color-scheme: dark) {
       :root {
@@ -46,7 +46,7 @@
         --tint: #e6b76a; --tint-strong: #d9a24c; --tint-fill: rgba(230, 183, 106, .16);
         --green: #30d158; --green-strong: #30d158; --red: #ff453a;
         --bar: rgba(18, 18, 20, .88); --shadow: none;
-        --accent: #0a84ff;
+        --accent: #40c8e0;
       }
     }
     html { scroll-padding-top: var(--top); overflow-x: clip; }
@@ -223,10 +223,10 @@
         <svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>
         音控指南
       </a>
-      <div class="title"><span class="role-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 4v16M12 4v16M18 4v16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="3" y="12.5" width="6" height="4" rx="1.4" fill="currentColor"/><rect x="9" y="6.5" width="6" height="4" rx="1.4" fill="currentColor"/><rect x="15" y="14" width="6" height="4" rx="1.4" fill="currentColor"/></svg></span>視訊 &amp; 音訊</div>
+      <div class="title"><span class="role-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="15.5" cy="8.5" r="5" fill="currentColor"/><path d="M12 13 4.5 20.5" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/></svg></span>麥克風傳遞</div>
     </div>
     <div class="progress-row">
-      <div class="count" id="count">0 <small>/ 21 已確認</small></div>
+      <div class="count" id="count">0 <small>/ 4 已確認</small></div>
       <div class="track" role="progressbar" aria-label="總進度" id="track"><div class="fill" id="fill"></div></div>
       <button class="text-btn" id="resetBtn" type="button">重設</button>
     </div>
@@ -247,41 +247,33 @@
   <script>
     // key 固定不變：之後增減項目，已勾選的進度也不會錯位
     const sections = [
-      { key: 'setup', phase: '聚會前', title: '環境與設備啟動', tag: 'Before Meeting', items: [
-        "消毒",
-        "開啟電源（牆壁上）",
-        "下到上依序開啟（擴大機 ➡️ 混音器 ➡️ 無線麥克風主機 ➡️ 電腦）"
-      ]},
-      { key: 'media', phase: '聚會前', title: '下載與準備多媒體', tag: 'Media Prep', items: [
-        "在 JW Library 下載《傳道與生活聚會手冊》或《守望台》文章中，聚會上需要播放的多媒體檔案。",
-        "確認已下載公眾演講的講者選擇的歌曲。",
-        "如果多媒體列表是從 JW Hub 下載，開啟多媒體播放列表，下載或導入列表裡的所有視頻。",
-        "如果使用個人播放列表，建立或導入播放列表，並確認所有視頻都已下載。"
-      ]},
-      { key: 'test', phase: '聚會前', title: '播放測試與音訊確認', tag: 'Playback Test', items: [
-        "嘗試播放在聚會中使用的每個圖片和視頻（在出版物或播放列表中），確保每個下載的項目都可以正常播放。",
-        "跟每位講者確定在什麼時候播放圖片和視頻。",
-        "測試所有麥克風，確定音質、音量（與負責講台的弟兄一起）",
-        "確認走道間以及廁所是否有聲音"
-      ]},
-      { key: 'zoom', phase: '聚會前', title: 'Zoom 與線上參與者', tag: 'Zoom Check', items: [
-        "開啟線上會議，讓需要的人加入",
-        "確定在 Zoom 裡，從媒體播放器電腦到混音器的音頻連接是設置正確的，而且運行正常。",
-        "確定在 Zoom 裡選取了正確的攝影設備，而且運行正常。不要傳送講台的影像，要等到聚會快要開始才傳送。不應該播放王國聚會所裡聽眾的影像。",
-        "確認有節目的人都到了。如果不在現場，確認是否在線上",
-        "確定每個參與節目的人，他們的影像畫面適當，而且麥克風的聲音良好。如果可能，就進行音頻測試，但測試的方式不要打斷聚會所會堂內的談話。",
-        "在聚會開始前的1分鐘，視頻控制員應該使所有視頻會議的參與人員靜音。他應該取消「允許參會者自我解除（容許與會者自行解除）靜音」這個選擇。對於混合聚會，聚會進行期間必須這樣安排。"
-      ]},
-      { key: 'audio', phase: '聚會中', title: '音控', tag: 'During · Audio', items: [
-        "播放唱詩的音樂時，音量不該太小，讓人無法全情投入；也不該太大，以致蓋過大家的歌聲。",
-        "留意講者提到播放圖片影片的時機",
-        "留意是否需要關閉線上聚會參與者的視頻音頻",
-        "隨時留意麥克風音量是否需要調整，善用 HIGH, MID, LOW 旋鈕調整音質"
+      { key: 'mic', phase: '聚會前・中', title: '麥克風傳遞員', tag: 'Mic Runner', items: [
+        "請最後確認無線麥克風電量",
+        "保護無線麥克風，請勿將麥克風放置在容易掉落的地方，如椅子上。",
+        "留意是否有問答討論的環節",
+        "確認評論的人是否有聲音，並隨時支援"
       ]}
     ];
 
-    const STORAGE_KEY = 'media-dept-interactive-checklist-v2';
-    const OLD_KEY = 'media-dept-interactive-checklist-v1';
+    const STORAGE_KEY = 'media-dept-mic-checklist-v1';
+    // 原本「講台與麥克風」合在同一頁 → 把屬於這一頁的勾選搬過來
+    const OLD_KEY = 'media-dept-stage-mic-checklist-v2';
+    try { localStorage.removeItem('media-dept-stage-mic-checklist-v1'); localStorage.removeItem('media-dept-stage-mic-checklist-v1:total'); } catch (e) {}
+    function migrate() {
+      try {
+        const old = JSON.parse(localStorage.getItem(OLD_KEY) || 'null');
+        if (!old) return {};
+        const mine = new Set(sections.map((s) => s.key));
+        const next = {}, rest = {};
+        Object.keys(old).forEach((k) => {
+          const m = k.match(/^(.+)-\d+$/);
+          if (m && mine.has(m[1])) { if (old[k]) next[k] = true; } else rest[k] = old[k];
+        });
+        if (Object.keys(rest).length) localStorage.setItem(OLD_KEY, JSON.stringify(rest));
+        else { localStorage.removeItem(OLD_KEY); localStorage.removeItem(OLD_KEY + ':total'); }
+        return next;
+      } catch (e) { return {}; }
+    }
     const $ = (id) => document.getElementById(id);
     const list = $('list'), dots = $('dots');
     const totalItems = sections.reduce((n, s) => n + s.items.length, 0);
@@ -292,22 +284,6 @@
       save(s) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch (e) {} },
       clear() { try { localStorage.removeItem(STORAGE_KEY); } catch (e) {} },
     };
-    // 舊版（含講台弟兄、麥克風傳遞員）的進度搬過來
-    function migrate() {
-      try {
-        const old = JSON.parse(localStorage.getItem(OLD_KEY) || 'null');
-        if (!old) return {};
-        const map = { 0: 'setup', 1: 'media', 2: 'test', 5: 'zoom', 6: 'audio' };
-        const next = {};
-        Object.keys(old).forEach((k) => {
-          const m = k.match(/^s(\d+)-i(\d+)$/);
-          if (m && old[k] && map[m[1]]) next[`${map[m[1]]}-${m[2]}`] = true;
-        });
-        localStorage.removeItem(OLD_KEY);
-        localStorage.removeItem(OLD_KEY + ':total');
-        return next;
-      } catch (e) { return {}; }
-    }
     let state = store.load() || migrate();
     store.save(state);
     try { localStorage.setItem(STORAGE_KEY + ':total', String(totalItems)); } catch (e) {}
