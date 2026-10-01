@@ -226,7 +226,7 @@
       <div class="title"><span class="role-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 4v16M12 4v16M18 4v16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="3" y="12.5" width="6" height="4" rx="1.4" fill="currentColor"/><rect x="9" y="6.5" width="6" height="4" rx="1.4" fill="currentColor"/><rect x="15" y="14" width="6" height="4" rx="1.4" fill="currentColor"/></svg></span>視訊 &amp; 音訊</div>
     </div>
     <div class="progress-row">
-      <div class="count" id="count">0 <small>/ 21 已確認</small></div>
+      <div class="count" id="count">0 <small>/ 25 已確認</small></div>
       <div class="track" role="progressbar" aria-label="總進度" id="track"><div class="fill" id="fill"></div></div>
       <button class="text-btn" id="resetBtn" type="button">重設</button>
     </div>
@@ -245,7 +245,8 @@
   </nav>
 
   <script>
-    // key 固定不變：之後增減項目，已勾選的進度也不會錯位
+    // 勾選紀錄用「區塊 key-第幾項」記：只在區塊最後面加項目才不會錯位；
+    // 拆開或插入項目時要換一個新的 key，並在 upgrade() 裡把舊紀錄對應過去
     const sections = [
       { key: 'setup', phase: '聚會前', title: '環境與設備啟動', tag: 'Before Meeting', items: [
         "消毒",
@@ -264,13 +265,18 @@
         "測試所有麥克風，確定音質、音量（與負責講台的弟兄一起）",
         "確認走道間以及廁所是否有聲音"
       ]},
-      { key: 'zoom', phase: '聚會前', title: 'Zoom 與線上參與者', tag: 'Zoom Check', items: [
+      // 一個勾選框只放一件事（文字出自 S-261 ¶16–17）
+      { key: 'online', phase: '聚會前', title: 'Zoom 與線上參與者', tag: 'Zoom Check', items: [
         "開啟線上會議，讓需要的人加入",
         "確定在 Zoom 裡，從媒體播放器電腦到混音器的音頻連接是設置正確的，而且運行正常。",
-        "確定在 Zoom 裡選取了正確的攝影設備，而且運行正常。不要傳送講台的影像，要等到聚會快要開始才傳送。不應該播放王國聚會所裡聽眾的影像。",
+        "確定在 Zoom 裡選取了正確的攝影設備，而且運行正常。",
+        "不要傳送講台的影像，要等到聚會快要開始才傳送。",
+        "不應該播放王國聚會所裡聽眾的影像。",
         "確認有節目的人都到了。如果不在現場，確認是否在線上",
-        "確定每個參與節目的人，他們的影像畫面適當，而且麥克風的聲音良好。如果可能，就進行音頻測試，但測試的方式不要打斷聚會所會堂內的談話。",
-        "在聚會開始前的1分鐘，視頻控制員應該使所有視頻會議的參與人員靜音。他應該取消「允許參會者自我解除（容許與會者自行解除）靜音」這個選擇。對於混合聚會，聚會進行期間必須這樣安排。"
+        "確定每個參與節目的人，他們的影像畫面適當，而且麥克風的聲音良好。",
+        "如果可能，就進行音頻測試，但測試的方式不要打斷聚會所會堂內的談話。",
+        "在聚會開始前的1分鐘，使所有視頻會議的參與人員靜音。",
+        "取消「容許與會者自行解除靜音」這個選擇。對於混合聚會，聚會進行期間必須這樣安排。"
       ]},
       { key: 'audio', phase: '聚會中', title: '音控', tag: 'During · Audio', items: [
         "播放唱詩的音樂時，音量不該太小，讓人無法全情投入；也不該太大，以致蓋過大家的歌聲。",
@@ -308,7 +314,21 @@
         return next;
       } catch (e) { return {}; }
     }
-    let state = store.load() || migrate();
+    // 舊的 Zoom 區塊（6 項）拆成 10 項：原本勾過的，拆出來的每一項都算已確認
+    function upgrade(st) {
+      const split = { 0: [0], 1: [1], 2: [2, 3, 4], 3: [5], 4: [6, 7], 5: [8, 9] };
+      Object.keys(st).forEach((k) => {
+        const m = k.match(/^zoom-(\d+)$/);
+        if (!m) return;
+        if (st[k]) (split[m[1]] || []).forEach((i) => { st['online-' + i] = true; });
+        delete st[k];
+      });
+      // 已經不存在的項目不能算進「已確認」
+      const valid = new Set(sections.flatMap((sec) => sec.items.map((_, i) => `${sec.key}-${i}`)));
+      Object.keys(st).forEach((k) => { if (!valid.has(k)) delete st[k]; });
+      return st;
+    }
+    let state = upgrade(store.load() || migrate());
     store.save(state);
     try { localStorage.setItem(STORAGE_KEY + ':total', String(totalItems)); } catch (e) {}
 
