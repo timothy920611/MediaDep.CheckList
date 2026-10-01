@@ -1,11 +1,11 @@
-/* 媒體部門 CheckList — Service Worker
+/* 音控指南 Media Dept. — Service Worker
  * - PDF：第一次下載後存在裝置上，之後秒開、也能離線閱讀；背景會用 ETag 檢查有沒有新版。
  * - HTML：優先抓網路（確保拿到最新版），沒網路才用快取。
  * 更新網站外觀後，把 SHELL_VERSION 改一下即可。
  */
-const SHELL_VERSION = 'shell-2026-10-01e';
+const SHELL_VERSION = 'shell-2026-10-01f';
 const DOC_CACHE = 'docs-v1';
-const SHELL_FILES = ['./', './index.html', './checklist-interactive.html', './checklist-stage-mic.html'];
+const SHELL_FILES = ['./', './index.html', './checklist-interactive.html', './checklist-stage.html', './checklist-mic.html'];
 
 const inflight = new Map(); // url -> Promise<void>（避免同一份 PDF 同時下載兩次）
 

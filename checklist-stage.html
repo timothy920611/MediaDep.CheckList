@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>講台與麥克風 Check List｜互動版</title>
+  <title>講台 Check List｜音控指南</title>
   <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
   <link rel="icon" type="image/svg+xml" href="icons/favicon.svg" />
@@ -36,6 +36,7 @@
       --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
       --top: 64px;        /* 上方總進度列的高度（JS 會量） */
       --gutter: 16px;     /* 左右留白（JS 依視窗寬度計算，內容最寬 760px） */
+      --accent: #af52de;  /* 這個職責的代表色（首頁卡片同色） */
     }
     @media (prefers-color-scheme: dark) {
       :root {
@@ -45,6 +46,7 @@
         --tint: #e6b76a; --tint-strong: #d9a24c; --tint-fill: rgba(230, 183, 106, .16);
         --green: #30d158; --green-strong: #30d158; --red: #ff453a;
         --bar: rgba(18, 18, 20, .88); --shadow: none;
+        --accent: #bf5af2;
       }
     }
     html { scroll-padding-top: var(--top); overflow-x: clip; }
@@ -74,12 +76,14 @@
     .embedded .top { padding-top: 12px; }
     .back { justify-self: start; display: inline-flex; align-items: center; gap: 4px; height: 44px; margin-left: -8px; padding: 0 8px; color: var(--tint); }
     .back svg { width: 12px; height: 20px; }
-    .title { font-size: 17px; font-weight: 600; white-space: nowrap; }
+    .title { display: inline-flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 600; white-space: nowrap; }
+    .role-icon { width: 26px; height: 26px; border-radius: 7px; background: var(--accent); color: #fff; display: grid; place-items: center; }
+    .role-icon svg { width: 17px; height: 17px; }
     .progress-row { display: flex; align-items: center; gap: 12px; }
     .count { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .count small { font-size: 15px; font-weight: 400; color: var(--label2); }
     .track { flex: 1; height: 6px; border-radius: 3px; background: var(--fill); overflow: hidden; }
-    .fill { height: 100%; width: 100%; border-radius: 3px; background: var(--tint-strong); transform-origin: left; transform: scaleX(0); transition: transform .5s var(--ease), background-color .3s; }
+    .fill { height: 100%; width: 100%; border-radius: 3px; background: var(--accent); transform-origin: left; transform: scaleX(0); transition: transform .5s var(--ease), background-color .3s; }
     .all-done .fill { background: var(--green-strong); }
     .text-btn { color: var(--tint); font-size: 15px; padding: 6px 4px; }
     .text-btn:active { opacity: .45; }
@@ -122,7 +126,7 @@
     .sec.complete .sec-count { background: color-mix(in srgb, var(--green-strong) 18%, transparent); color: var(--green); }
     .sec-bar { /* 黏住時底部的小進度條 */
       position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
-      background: var(--tint-strong); transform-origin: left; transform: scaleX(var(--p, 0));
+      background: var(--accent); transform-origin: left; transform: scaleX(var(--p, 0));
       opacity: var(--c); transition: transform .5s var(--ease), background-color .3s;
     }
     .sec.complete .sec-bar { background: var(--green-strong); }
@@ -149,7 +153,7 @@
       transition: background-color .2s, border-color .2s;
     }
     .circle svg { width: 13px; height: 13px; color: #fff; opacity: 0; transform: scale(.4); transition: opacity .15s, transform .35s cubic-bezier(.34, 1.56, .64, 1); }
-    .item input:checked + .circle { background: var(--tint-strong); border-color: var(--tint-strong); animation: pop .35s var(--ease); }
+    .item input:checked + .circle { background: var(--accent); border-color: var(--accent); animation: pop .35s var(--ease); }
     .item input:checked + .circle svg { opacity: 1; transform: none; }
     .item input:focus-visible + .circle { outline: 3px solid var(--tint-strong); outline-offset: 2px; }
     @keyframes pop { 40% { transform: scale(.82); } 100% { transform: scale(1); } }
@@ -175,7 +179,7 @@
     .finish h2 { font-size: 34px; font-weight: 700; letter-spacing: -.01em; }
     .finish p { color: var(--label2); font-size: 16px; max-width: 26em; }
     .finish .btns { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; min-width: 220px; }
-    .btn-filled { padding: 13px 22px; border-radius: 14px; background: var(--tint-strong); color: #fff; font-weight: 600; }
+    .btn-filled { padding: 13px 22px; border-radius: 14px; background: var(--accent); color: #fff; font-weight: 600; }
     .btn-plain { padding: 11px 22px; color: var(--red); }
     .btn-filled:active, .btn-plain:active { opacity: .6; }
 
@@ -217,12 +221,12 @@
     <div class="top-row">
       <a class="back" href="./">
         <svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>
-        媒體部門
+        音控指南
       </a>
-      <div class="title">講台與麥克風</div>
+      <div class="title"><span class="role-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3.5 8 6 4h12l2.5 4z" fill="currentColor"/><path d="M8 9.5h8l-.8 9.5H8.8z" fill="currentColor"/><rect x="5" y="19.5" width="14" height="2" rx="1" fill="currentColor"/></svg></span>講台</div>
     </div>
     <div class="progress-row">
-      <div class="count" id="count">0 <small>/ 9 已確認</small></div>
+      <div class="count" id="count">0 <small>/ 5 已確認</small></div>
       <div class="track" role="progressbar" aria-label="總進度" id="track"><div class="fill" id="fill"></div></div>
       <button class="text-btn" id="resetBtn" type="button">重設</button>
     </div>
@@ -243,26 +247,36 @@
   <script>
     // key 固定不變：之後增減項目，已勾選的進度也不會錯位
     const sections = [
-      { key: 'stage-before', phase: '聚會前', title: '講台弟兄', tag: 'Stage Brother', items: [
+      { key: 'stage-before', phase: '聚會前', title: '聚會前準備', tag: 'Stage · Before', items: [
         "請留意示範麥克風擺放方向",
         "與公眾演講講者確認麥克風高度",
         "預先調好誦讀弟兄麥克風"
       ]},
-      { key: 'stage-during', phase: '聚會中', title: '講台弟兄', tag: 'During · Stage', items: [
+      { key: 'stage-during', phase: '聚會中', title: '聚會中留意', tag: 'Stage · During', items: [
         "留意麥克風高度",
         "留意示範麥克風擺放方向"
-      ]},
-      { key: 'mic', phase: '聚會前・中', title: '麥克風傳遞員', tag: 'Mic Runner', items: [
-        "請最後確認無線麥克風電量",
-        "保護無線麥克風，請勿將麥克風放置在容易掉落的地方，如椅子上。",
-        "留意是否有問答討論的環節",
-        "確認評論的人是否有聲音，並隨時支援"
       ]}
     ];
 
-    const STORAGE_KEY = 'media-dept-stage-mic-checklist-v2';
-    // v1 有兩個麥克風傳遞員區塊，舊的勾選紀錄直接清掉
+    const STORAGE_KEY = 'media-dept-stage-checklist-v1';
+    // 原本「講台與麥克風」合在同一頁 → 把屬於這一頁的勾選搬過來
+    const OLD_KEY = 'media-dept-stage-mic-checklist-v2';
     try { localStorage.removeItem('media-dept-stage-mic-checklist-v1'); localStorage.removeItem('media-dept-stage-mic-checklist-v1:total'); } catch (e) {}
+    function migrate() {
+      try {
+        const old = JSON.parse(localStorage.getItem(OLD_KEY) || 'null');
+        if (!old) return {};
+        const mine = new Set(sections.map((s) => s.key));
+        const next = {}, rest = {};
+        Object.keys(old).forEach((k) => {
+          const m = k.match(/^(.+)-\d+$/);
+          if (m && mine.has(m[1])) { if (old[k]) next[k] = true; } else rest[k] = old[k];
+        });
+        if (Object.keys(rest).length) localStorage.setItem(OLD_KEY, JSON.stringify(rest));
+        else { localStorage.removeItem(OLD_KEY); localStorage.removeItem(OLD_KEY + ':total'); }
+        return next;
+      } catch (e) { return {}; }
+    }
     const $ = (id) => document.getElementById(id);
     const list = $('list'), dots = $('dots');
     const totalItems = sections.reduce((n, s) => n + s.items.length, 0);
@@ -273,7 +287,7 @@
       save(s) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch (e) {} },
       clear() { try { localStorage.removeItem(STORAGE_KEY); } catch (e) {} },
     };
-    let state = store.load() || {};
+    let state = store.load() || migrate();
     store.save(state);
     try { localStorage.setItem(STORAGE_KEY + ':total', String(totalItems)); } catch (e) {}
 
