@@ -1,11 +1,13 @@
 /* 音控指南 Media Dept. — Service Worker
  * - PDF：第一次下載後存在裝置上，之後秒開、也能離線閱讀；背景會用 ETag 檢查有沒有新版。
- *   第一次開啟時邊下載邊顯示，並回報進度；背景預載會讓路給使用者正在等的那份。
+ *   第一次開啟時邊下載邊交給 PDF.js（它會分段抓、先畫第一頁）；背景預載會讓路給使用者正在等的那份。
+ * - PDF.js（vendor/pdfjs/）：第一次用到後存在裝置上。
  * - HTML：優先抓網路（確保拿到最新版），沒網路才用快取。
  * 更新網站外觀後，把 SHELL_VERSION 改一下即可。
  */
-const SHELL_VERSION = 'shell-2026-10-01j';
+const SHELL_VERSION = 'shell-2026-10-01k';
 const DOC_CACHE = 'docs-v1';
+const LIB_CACHE = 'pdfjs-3.11.174'; // PDF.js 換版本時改這個名字
 const SHELL_FILES = ['./', './index.html', './checklist-interactive.html', './checklist-stage.html', './checklist-mic.html'];
 
 // url -> 下載工作 { ready, done, ctrl, bg, copy, taken }（同一份 PDF 不會同時下載兩次）
@@ -22,7 +24,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((k) => k.startsWith('shell-') && k !== SHELL_VERSION).map((k) => caches.delete(k)));
+    await Promise.all(keys.filter((k) => (k.startsWith('shell-') && k !== SHELL_VERSION) || (k.startsWith('pdfjs-') && k !== LIB_CACHE)).map((k) => caches.delete(k)));
     await self.clients.claim();
   })());
 });
@@ -34,7 +36,8 @@ function docKey(url) {
 }
 
 // 下載一份 PDF 存進快取。回應同時分一份給正在等的畫面（copy），不必等整份存完才開始顯示。
-function download(key, { bg = false, revalidate = false } = {}) {
+// revalidate：裝置上已有的那份；帶它的 ETag 去問有沒有新版，沒有就只會回 304。
+function download(key, { bg = false, revalidate = null } = {}) {
   const running = jobs.get(key);
   if (running) { if (!bg) running.bg = false; return running; }
   const job = { bg, ctrl: new AbortController(), copy: null, taken: false };
@@ -42,12 +45,19 @@ function download(key, { bg = false, revalidate = false } = {}) {
   job.ready = new Promise((r) => { setReady = r; });
   job.done = (async () => {
     try {
-      const res = await fetch(key, { cache: 'no-cache', signal: job.ctrl.signal }); // 有 ETag 時只會回 304，不會重新下載整份
+      // 不寫進瀏覽器的 HTTP 快取（反正會存到 DOC_CACHE）：寫入中的快取會讓 PDF.js 對同一個網址的
+      // 分段請求排隊等整份下載完，第一頁就出不來。
+      const headers = {};
+      if (revalidate) {
+        const etag = revalidate.headers.get('etag'), modified = revalidate.headers.get('last-modified');
+        if (etag) headers['If-None-Match'] = etag;
+        else if (modified) headers['If-Modified-Since'] = modified;
+      }
+      const res = await fetch(key, { cache: 'no-store', headers, signal: job.ctrl.signal });
       if (res.status !== 200) { setReady(null); return false; }
-      const counted = countBytes(res, job, key);
-      if (!revalidate) job.copy = counted.clone();
+      if (!revalidate) job.copy = res.clone();
       setReady(job);
-      await (await caches.open(DOC_CACHE)).put(key, counted);
+      await (await caches.open(DOC_CACHE)).put(key, res);
       return true;
     } catch (e) { setReady(null); throw e; }
   })().finally(() => { jobs.delete(key); job.copy = null; });
@@ -55,34 +65,16 @@ function download(key, { bg = false, revalidate = false } = {}) {
   return job;
 }
 
-// 計算已下載的位元組；使用者正在等這份時回報進度（loader 顯示「已下載 45%」，不會看起來像當機）
-function countBytes(res, job, key) {
-  const total = res.headers.has('content-encoding') ? 0 : Number(res.headers.get('content-length')) || 0;
-  let loaded = 0, last = 0;
-  const report = (done) => {
-    if (job.bg) return;
-    self.clients.matchAll({ type: 'window' })
-      .then((all) => all.forEach((c) => c.postMessage({ type: 'progress', url: key, loaded, total, done })));
-  };
-  const body = res.body.pipeThrough(new TransformStream({
-    transform(chunk, ctl) {
-      loaded += chunk.byteLength;
-      ctl.enqueue(chunk);
-      const now = Date.now();
-      if (now - last > 150) { last = now; report(false); }
-    },
-    flush() { report(true); },
-  }));
-  return new Response(body, { status: res.status, statusText: res.statusText, headers: res.headers });
-}
-
 async function serveDoc(event) {
   const key = docKey(event.request.url);
   const cache = await caches.open(DOC_CACHE);
   const hit = await cache.match(key);
   if (hit) {
-    event.waitUntil(download(key, { bg: true, revalidate: true }).done.catch(() => {})); // 背景檢查新版
-    return hit;
+    event.waitUntil(download(key, { bg: true, revalidate: hit }).done.catch(() => {})); // 背景檢查新版
+    // 整份都在裝置上了 → 拿掉 Accept-Ranges，PDF.js 就不會再去網路分段抓（離線也能開）
+    const headers = new Headers(hit.headers);
+    headers.delete('accept-ranges');
+    return new Response(hit.body, { status: hit.status, statusText: hit.statusText, headers });
   }
 
   // 使用者在等這份 → 其他背景預載先停下來，頻寬全部讓給它（之後會自動接著抓）
@@ -115,6 +107,15 @@ async function pump() {
   } finally { pumping = false; }
 }
 
+async function cacheFirst(request) {
+  const cache = await caches.open(LIB_CACHE);
+  const hit = await cache.match(request, { ignoreSearch: true });
+  if (hit) return hit;
+  const res = await fetch(request);
+  if (res.ok && res.status === 200) cache.put(request, res.clone()).catch(() => {});
+  return res;
+}
+
 async function networkFirst(request) {
   const cache = await caches.open(SHELL_VERSION);
   try {
@@ -137,6 +138,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
   if (url.pathname.toLowerCase().endsWith('.pdf')) { event.respondWith(serveDoc(event)); return; }
+  if (url.pathname.includes('/vendor/pdfjs/')) { event.respondWith(cacheFirst(req)); return; }
   if (req.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('/')) {
     event.respondWith(networkFirst(req));
   }
