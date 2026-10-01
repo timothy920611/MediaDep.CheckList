@@ -322,6 +322,7 @@
   (() => {
     // 頁數與大小只用來顯示；替換 PDF 後記得一起更新
     const DOCS = [
+      { id: 'avsupport', file: 'avsupport_CH.pdf', title: '會眾聚會影音支援注意事項', label: '注意事項 · OBS', pages: 11, bytes: 860619, tile: '#ff3b30', glyph: 'notes' },
       { id: 'S-144',    file: 'S-144_CH.pdf',    title: '在聚會時播放影音資料',           pages: 19, bytes: 2019423, tile: '#ff9500', glyph: 'play' },
       { id: 'S-178',    file: 'S-178_CH.pdf',    title: '給視頻會議公眾演講講者的影音指南', pages: 3,  bytes: 360585,  tile: '#5856d6', glyph: 'mic' },
       { id: 'S-132',    file: 'S-132_CH.pdf',    title: '王國聚會所影音系統電腦設置指南',   pages: 17, bytes: 1273347, tile: '#8e8e93', glyph: 'desktop' },
@@ -343,6 +344,7 @@
       video:   '<rect x="2.5" y="6.5" width="13" height="11" rx="2.5" fill="currentColor"/><path d="m16.5 10.5 5-3v9l-5-3z" fill="currentColor"/>',
       sliders: '<path d="M6 4v16M12 4v16M18 4v16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="3" y="12.5" width="6" height="4" rx="1.4" fill="currentColor"/><rect x="9" y="6.5" width="6" height="4" rx="1.4" fill="currentColor"/><rect x="15" y="14" width="6" height="4" rx="1.4" fill="currentColor"/>',
       podium:  '<path d="M3.5 8 6 4h12l2.5 4z" fill="currentColor"/><path d="M8 9.5h8l-.8 9.5H8.8z" fill="currentColor"/><rect x="5" y="19.5" width="14" height="2" rx="1" fill="currentColor"/>',
+      notes:   '<rect x="4.5" y="3" width="15" height="18" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
       handmic: '<circle cx="15.5" cy="8.5" r="5" fill="currentColor"/><path d="M12 13 4.5 20.5" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>',
     };
 
