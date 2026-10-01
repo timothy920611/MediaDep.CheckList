@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>媒體部門 CheckList</title>
+  <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+  <meta name="apple-mobile-web-app-title" content="媒體部門" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23c8913a'/%3E%3Cpath d='M20 33l8 8 16-18' fill='none' stroke='white' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      color-scheme: light dark;
+      --bg: #f2f2f7;
+      --card: #ffffff;
+      --label: #1d1d1f;
+      --label2: rgba(60, 60, 67, .62);
+      --label3: rgba(60, 60, 67, .32);
+      --sep: rgba(60, 60, 67, .18);
+      --press: rgba(60, 60, 67, .10);
+      --fill: rgba(120, 120, 128, .12);
+      --tint: #98631a;
+      --tint-strong: #c8913a;
+      --tint-fill: rgba(200, 145, 58, .14);
+      --green: #248a3d;
+      --bar: rgba(242, 242, 247, .78);
+      --shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06);
+      --ease: cubic-bezier(.32, .72, 0, 1);
+      --nav-h: 52px;
+      --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #000000;
+        --card: #1c1c1e;
+        --label: #f5f5f7;
+        --label2: rgba(235, 235, 245, .62);
+        --label3: rgba(235, 235, 245, .30);
+        --sep: rgba(84, 84, 88, .55);
+        --press: rgba(255, 255, 255, .08);
+        --fill: rgba(120, 120, 128, .24);
+        --tint: #e6b76a;
+        --tint-strong: #d9a24c;
+        --tint-fill: rgba(230, 183, 106, .16);
+        --green: #30d158;
+        --bar: rgba(18, 18, 20, .74);
+        --shadow: none;
+      }
+    }
+
+    html, body { height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--label);
+      font: 17px/1.47 var(--font);
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+    a, button { touch-action: manipulation; }
+    :focus-visible { outline: 3px solid var(--tint-strong); outline-offset: 2px; border-radius: 8px; }
+
+    /* ─── Navigation stack ─── */
+    .view {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      background: var(--bg);
+      transition: transform .5s var(--ease), visibility 0s linear .5s;
+      will-change: transform;
+    }
+    #home { z-index: 1; }
+    #home::after { /* 被推到後面時微微變暗 */
+      content: ""; position: absolute; inset: 0; background: #000; opacity: 0;
+      pointer-events: none; transition: opacity .5s var(--ease);
+    }
+    #reader {
+      z-index: 2; transform: translateX(100%); visibility: hidden;
+      box-shadow: -12px 0 32px rgba(0,0,0,.14);
+    }
+    [data-view="reader"] #home { transform: translateX(-28%); }
+    [data-view="reader"] #home::after { opacity: .18; }
+    [data-view="reader"] #reader { transform: none; visibility: visible; transition-delay: 0s, 0s; }
+    [data-view="home"] #home { visibility: visible; transition-delay: 0s, 0s; }
+    [data-view="reader"] #home { visibility: hidden; }
+    .no-anim .view, .no-anim .view::after { transition: none !important; }
+
+    /* ─── Nav bar (translucent material) ─── */
+    .navbar {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 5;
+      height: calc(var(--nav-h) + env(safe-area-inset-top));
+      padding: env(safe-area-inset-top) max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left));
+      display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+      transition: background-color .25s, backdrop-filter .25s;
+    }
+    .navbar::after { /* 捲動時才出現的分隔線 */
+      content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: .5px;
+      background: var(--sep); opacity: 0; transition: opacity .25s;
+    }
+    .navbar.material, .reader .navbar {
+      background: var(--bar);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      backdrop-filter: saturate(180%) blur(20px);
+    }
+    .navbar.material::after, .reader .navbar::after { opacity: 1; }
+    .nav-title {
+      grid-column: 2; max-width: min(56vw, 520px);
+      font-size: 17px; font-weight: 600; letter-spacing: -.01em;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
+    }
+    #home .nav-title { opacity: 0; transform: translateY(4px); transition: opacity .2s, transform .2s; }
+    #home .navbar.collapsed .nav-title { opacity: 1; transform: none; }
+
+    /* ─── Home ─── */
+    .scroller {
+      flex: 1; overflow-y: auto; overscroll-behavior-y: contain;
+      -webkit-overflow-scrolling: touch;
+      padding: calc(var(--nav-h) + env(safe-area-inset-top)) 0 calc(40px + env(safe-area-inset-bottom));
+    }
+    .content { max-width: 680px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left)); }
+    .large-title { padding: 4px 4px 18px; }
+    .eyebrow { font-size: 13px; font-weight: 600; color: var(--tint); letter-spacing: .02em; }
+    .large-title h1 { font-size: 34px; line-height: 1.12; font-weight: 700; letter-spacing: -.01em; margin-top: 2px; }
+    .large-title p { color: var(--label2); font-size: 15px; margin-top: 6px; }
+
+    /* Hero：互動 Check List */
+    .hero {
+      display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px;
+      padding: 18px; border-radius: 22px; background: var(--card); box-shadow: var(--shadow);
+      transition: transform .12s ease-out, background-color .12s;
+    }
+    .hero:active { transform: scale(.98); background: color-mix(in srgb, var(--card) 92%, var(--label)); }
+    .ring { width: 56px; height: 56px; position: relative; }
+    .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .ring circle { fill: none; stroke-width: 6; }
+    .ring .track { stroke: var(--fill); }
+    .ring .value { stroke: var(--tint-strong); stroke-linecap: round; transition: stroke-dashoffset .6s var(--ease), stroke .3s; }
+    .hero.done .ring .value { stroke: var(--green); }
+    .ring b {
+      position: absolute; inset: 0; display: grid; place-items: center;
+      font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+    }
+    .hero-text { min-width: 0; }
+    .hero-text h2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 17px; font-weight: 700; line-height: 1.25; letter-spacing: -.01em; }
+    .hero-text p { font-size: 14px; color: var(--label2); margin-top: 3px; font-variant-numeric: tabular-nums; }
+    .pill {
+      padding: 7px 16px; border-radius: 999px; font-size: 15px; font-weight: 600;
+      background: var(--tint-fill); color: var(--tint); white-space: nowrap;
+    }
+    .hero.done .pill { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); }
+
+    /* Inset grouped list */
+    .group-header {
+      font-size: 13px; font-weight: 400; color: var(--label2); text-transform: uppercase;
+      letter-spacing: .02em; padding: 30px 16px 7px;
+    }
+    .group { list-style: none; background: var(--card); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); }
+    .row {
+      position: relative; display: flex; align-items: center; gap: 12px;
+      min-height: 64px; padding: 10px 14px 10px 16px;
+      transition: background-color .25s;
+    }
+    .row:active { background: var(--press); transition: none; } /* 按下的瞬間就回饋 */
+    .group li + li .row::before {
+      content: ""; position: absolute; top: 0; right: 0; left: 60px; height: .5px; background: var(--sep);
+    }
+    .tile {
+      width: 32px; height: 32px; border-radius: 8px; flex: none;
+      display: grid; place-items: center; background: var(--tile); color: #fff;
+    }
+    .tile svg { width: 18px; height: 18px; }
+    .row-text { flex: 1; min-width: 0; }
+    .row-title { display: block; font-size: 16px; font-weight: 500; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row-sub { display: block; font-size: 13px; color: var(--label2); margin-top: 1px; font-variant-numeric: tabular-nums; }
+    .saved { color: var(--green); }
+    .chev { width: 8px; height: 13px; flex: none; color: var(--label3); }
+    .group-footer { font-size: 13px; color: var(--label2); padding: 8px 16px 0; line-height: 1.45; min-height: 1.45em; }
+
+    /* ─── Reader ─── */
+    .back {
+      grid-column: 1; justify-self: start;
+      display: inline-flex; align-items: center; gap: 4px;
+      height: 44px; padding: 0 8px; color: var(--tint); font-size: 17px; border-radius: 10px;
+    }
+    .back:active { opacity: .45; }
+    .back svg { width: 12px; height: 20px; }
+    .actions { grid-column: 3; justify-self: end; display: flex; }
+    .icon-btn { width: 44px; height: 44px; display: grid; place-items: center; color: var(--tint); border-radius: 10px; }
+    .icon-btn:active { opacity: .45; }
+    .icon-btn svg { width: 22px; height: 22px; }
+    .icon-btn[hidden] { display: none; }
+
+    .viewer { position: relative; flex: 1; margin-top: calc(var(--nav-h) + env(safe-area-inset-top)); background: var(--bg); }
+    .viewer iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--bg); }
+
+    .loader {
+      position: absolute; inset: 0; z-index: 2;
+      display: grid; place-items: center; align-content: center; gap: 14px;
+      background: var(--bg); text-align: center; padding: 24px;
+      opacity: 0; visibility: hidden; transition: opacity .25s, visibility 0s linear .25s;
+    }
+    .loader.on { opacity: 1; visibility: visible; transition: opacity .2s .15s, visibility 0s; } /* 150ms 內載完就不閃 */
+    .spinner { width: 28px; height: 28px; color: var(--label2); animation: spin .9s steps(8) infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loader strong { font-size: 17px; font-weight: 600; }
+    .loader span { font-size: 13px; color: var(--label2); font-variant-numeric: tabular-nums; }
+
+    .fallback { display: none; }
+    .fallback.on { display: grid; }
+    .btn-filled {
+      margin-top: 6px; padding: 12px 22px; border-radius: 999px;
+      background: var(--tint-strong); color: #fff; font-weight: 600; font-size: 16px;
+    }
+    .btn-filled:active { opacity: .7; }
+
+    /* ─── Accessibility ─── */
+    @media (prefers-reduced-motion: reduce) {
+      .view { transition: opacity .2s ease, visibility 0s linear .2s !important; transform: none !important; }
+      #reader { opacity: 0; }
+      [data-view="reader"] #reader { opacity: 1; transition-delay: 0s !important; }
+      .spinner { animation-duration: 2s; }
+    }
+    @media (prefers-reduced-transparency: reduce) {
+      .navbar.material, .reader .navbar { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+    }
+    @media (prefers-contrast: more) {
+      :root { --label2: var(--label); --sep: var(--label3); }
+      .group, .hero { outline: 1px solid var(--label3); }
+    }
+    @media (min-width: 520px) { .hero-text h2 { font-size: 19px; } }
+    @media (min-width: 700px) {
+      .large-title h1 { font-size: 40px; }
+      .large-title { padding-top: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app" data-view="home" class="no-anim">
+
+    <!-- 首頁 -->
+    <section class="view" id="home" aria-label="文件列表">
+      <header class="navbar" id="homeBar">
+        <div class="nav-title">媒體部門</div>
+      </header>
+      <main class="scroller" id="homeScroller">
+        <div class="content">
+          <div class="large-title" id="largeTitle">
+            <div class="eyebrow">Media Dept · CheckList</div>
+            <h1>媒體部門</h1>
+            <p>聚會前後的確認清單與影音指南</p>
+          </div>
+
+          <a class="hero" id="hero" href="checklist-interactive.html" data-id="checklist">
+            <div class="ring" aria-hidden="true">
+              <svg viewBox="0 0 56 56"><circle class="track" cx="28" cy="28" r="24"/><circle class="value" id="ringValue" cx="28" cy="28" r="24"/></svg>
+              <b id="ringLabel">0%</b>
+            </div>
+            <div class="hero-text">
+              <h2>確認表單 Check List</h2>
+              <p id="heroSub">互動版 · 9 個區塊</p>
+            </div>
+            <span class="pill" id="heroPill">開始</span>
+          </a>
+
+          <h2 class="group-header">參考文件</h2>
+          <ul class="group" id="docList"></ul>
+          <p class="group-footer" id="offlineNote"></p>
+        </div>
+      </main>
+    </section>
+
+    <!-- 閱讀器 -->
+    <section class="view reader" id="reader" aria-label="文件閱讀器">
+      <header class="navbar">
+        <button class="back" id="backBtn" type="button" aria-label="返回文件列表">
+          <svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>
+          <span>文件</span>
+        </button>
+        <div class="nav-title" id="readerTitle"></div>
+        <div class="actions">
+          <a class="icon-btn" id="openBtn" href="#" target="_blank" rel="noopener" aria-label="在新分頁開啟" title="在新分頁開啟">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg>
+          </a>
+          <a class="icon-btn" id="downloadBtn" href="#" download aria-label="下載" title="下載">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
+          </a>
+        </div>
+      </header>
+      <div class="viewer" id="viewer">
+        <div class="loader" id="loader" role="status" aria-live="polite">
+          <svg class="spinner" viewBox="0 0 28 28" aria-hidden="true">
+            <g stroke="currentColor" stroke-width="2.6" stroke-linecap="round">
+              <line x1="14" y1="3" x2="14" y2="8" opacity="1"/>
+              <line x1="14" y1="3" x2="14" y2="8" opacity=".88" transform="rotate(-45 14 14)"/>
+              <line x1="14" y1="3" x2="14" y2="8" opacity=".75" transform="rotate(-90 14 14)"/>
+              <line x1="14" y1="3" x2="14" y2="8" opacity=".62" transform="rotate(-135 14 14)"/>
+              <line x1="14" y1="3" x2="14" y2="8" opacity=".5" transform="rotate(-180 14 14)"/>
+              <line x1="14" y1="3" x2="14" y2="8" opacity=".38" transform="rotate(-225 14 14)"/>
+              <line x1="14" y1="3" x2="14" y2="8" opacity=".26" transform="rotate(-270 14 14)"/>
+              <line x1="14" y1="3" x2="14" y2="8" opacity=".15" transform="rotate(-315 14 14)"/>
+            </g>
+          </svg>
+          <strong id="loaderTitle">正在開啟</strong>
+          <span id="loaderMeta"></span>
+        </div>
+        <div class="loader fallback" id="fallback">
+          <strong>這個瀏覽器無法直接顯示 PDF</strong>
+          <span>改用新分頁開啟，或直接下載。</span>
+          <a class="btn-filled" id="fallbackOpen" href="#" target="_blank" rel="noopener">在新分頁開啟</a>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+  (() => {
+    // 頁數與大小只用來顯示；替換 PDF 後記得一起更新
+    const DOCS = [
+      { id: 'S-144',    file: 'S-144_CH.pdf',    title: '在聚會時播放影音資料',           pages: 19, bytes: 2019423, tile: '#ff9500', glyph: 'play' },
+      { id: 'S-178',    file: 'S-178_CH.pdf',    title: '給視頻會議公眾演講講者的影音指南', pages: 3,  bytes: 360585,  tile: '#5856d6', glyph: 'mic' },
+      { id: 'S-132',    file: 'S-132_CH.pdf',    title: '王國聚會所影音系統電腦設置指南',   pages: 17, bytes: 1273347, tile: '#8e8e93', glyph: 'desktop' },
+      { id: 'S-261',    file: 'S-261_CH.pdf',    title: '混合聚會的影音指南',             pages: 8,  bytes: 427199,  tile: '#34c759', glyph: 'people' },
+      { id: 'zoominst', file: 'zoominst_CH.pdf', title: 'Zoom 線上視頻會議指示', label: 'Zoom', pages: 14, bytes: 555270, tile: '#007aff', glyph: 'video' },
+    ];
+    const CHECKLIST = { id: 'checklist', file: 'checklist-interactive.html', title: '確認表單 Check List' };
+    const CL_KEY = 'media-dept-interactive-checklist-v1';
+    const CL_SECTIONS = 9;
+
+    const GLYPHS = {
+      play:    '<path d="M8 5.5v13l10-6.5z" fill="currentColor"/>',
+      mic:     '<rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+      desktop: '<rect x="3" y="4" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 20h6M12 16v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+      people:  '<circle cx="9" cy="8" r="3" fill="currentColor"/><circle cx="16.5" cy="9" r="2.5" fill="currentColor"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0zM14.5 19a4.5 4.5 0 0 1 7-3.7V19z" fill="currentColor"/>',
+      video:   '<rect x="2.5" y="6.5" width="13" height="11" rx="2.5" fill="currentColor"/><path d="m16.5 10.5 5-3v9l-5-3z" fill="currentColor"/>',
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const app = $('app'), home = $('home'), reader = $('reader');
+    const viewer = $('viewer'), loader = $('loader'), fallback = $('fallback');
+
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    // iOS 的 iframe 只會顯示 PDF 第一頁；Android 沒有內建 PDF 檢視器 → 直接交給系統開
+    const inlinePdf = !isIOS && navigator.pdfViewerEnabled !== false;
+
+    const mb = (b) => b >= 1e6 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB';
+    const isHtml = (d) => d.file.endsWith('.html');
+    const byId = (id) => id === CHECKLIST.id ? CHECKLIST : DOCS.find((d) => d.id === id);
+
+    /* ── 文件列表 ── */
+    $('docList').innerHTML = DOCS.map((d) => `
+      <li><a class="row" href="${d.file}" data-id="${d.id}" ${inlinePdf ? '' : 'target="_blank" rel="noopener"'}>
+        <span class="tile" style="--tile:${d.tile}"><svg viewBox="0 0 24 24" aria-hidden="true">${GLYPHS[d.glyph]}</svg></span>
+        <span class="row-text">
+          <span class="row-title">${d.title}</span>
+          <span class="row-sub">${d.label || d.id} · ${d.pages} 頁 · ${mb(d.bytes)}<span class="saved" data-saved="${d.id}"></span></span>
+        </span>
+        <svg class="chev" viewBox="0 0 8 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m1.5 1.5 5 5-5 5"/></svg>
+      </a></li>`).join('');
+
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest('a[data-id]');
+      if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const doc = byId(a.dataset.id);
+      if (!isHtml(doc) && !inlinePdf) return; // 讓瀏覽器用新分頁開
+      e.preventDefault();
+      openDoc(doc);
+    });
+
+    /* ── 預先載入：滑鼠移過去 / 手指按下的那一刻就開始下載 ── */
+    const warmed = new Set();
+    function warm(urls) {
+      urls = urls.filter((u) => !warmed.has(u));
+      if (!urls.length) return;
+      urls.forEach((u) => warmed.add(u));
+      const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
+      if (sw) sw.postMessage({ type: 'warm', urls });
+      else urls.forEach((u) => fetch(u, { priority: 'low' }).then((r) => r.blob()).catch(() => {}));
+    }
+    ['pointerenter', 'pointerdown', 'focusin'].forEach((type) =>
+      $('docList').addEventListener(type, (e) => {
+        const a = e.target.closest && e.target.closest('a[data-id]');
+        if (a) warm([a.getAttribute('href')]);
+      }, true));
+
+    /* ── 導覽（支援瀏覽器返回鍵、#S-144 直接連結） ── */
+    let frame = null, unloadTimer = 0, loadTimer = 0;
+
+    function setView(name, animate) {
+      app.classList.toggle('no-anim', !animate || document.hidden);
+      app.dataset.view = name;
+      home.inert = name !== 'home';
+      reader.inert = name !== 'reader';
+      if (!animate) requestAnimationFrame(() => requestAnimationFrame(() => app.classList.remove('no-anim')));
+    }
+
+    function openDoc(doc, { animate = true, push = true } = {}) {
+      clearTimeout(unloadTimer); clearTimeout(loadTimer);
+      $('readerTitle').textContent = doc.title;
+      $('openBtn').href = doc.file;
+      $('fallbackOpen').href = doc.file;
+      $('downloadBtn').href = doc.file;
+      $('downloadBtn').setAttribute('download', doc.file);
+      $('downloadBtn').hidden = isHtml(doc);
+      $('openBtn').hidden = isHtml(doc);
+      $('loaderTitle').textContent = '正在開啟 ' + (doc.label || doc.id || '');
+      $('loaderMeta').textContent = doc.bytes ? `${doc.pages} 頁 · ${mb(doc.bytes)}` : '';
+      fallback.classList.remove('on');
+
+      // 每次換一個新的 iframe：不會在瀏覽紀錄裡留下多餘的「上一頁」
+      if (!frame || frame.dataset.src !== doc.file) {
+        if (frame) frame.remove();
+        frame = document.createElement('iframe');
+        frame.title = doc.title;
+        frame.dataset.src = doc.file;
+        frame.src = doc.file;
+        loader.classList.add('on');
+        frame.addEventListener('load', () => { loader.classList.remove('on'); clearTimeout(loadTimer); }, { once: true });
+        loadTimer = setTimeout(() => loader.classList.remove('on'), 20000);
+        viewer.appendChild(frame);
+      }
+
+      setView('reader', animate);
+      if (push) history.pushState({ doc: doc.id }, '', '#' + doc.id);
+      $('backBtn').focus({ preventScroll: true });
+    }
+
+    function closeDoc({ animate = true } = {}) {
+      setView('home', animate);
+      clearTimeout(unloadTimer);
+      unloadTimer = setTimeout(() => { if (frame) { frame.remove(); frame = null; } loader.classList.remove('on'); }, 550);
+      refreshHero();
+    }
+
+    function route({ animate }) {
+      const id = decodeURIComponent(location.hash.slice(1));
+      const doc = id && byId(id);
+      if (doc && (isHtml(doc) || inlinePdf)) openDoc(doc, { animate, push: false });
+      else closeDoc({ animate });
+    }
+
+    $('backBtn').addEventListener('click', () => {
+      if (history.state && history.state.doc && !history.state.deep) history.back();
+      else { history.replaceState(null, '', location.pathname + location.search); closeDoc({ animate: true }); }
+    });
+    addEventListener('popstate', () => route({ animate: true }));
+    addEventListener('keydown', (e) => { if (e.key === 'Escape' && app.dataset.view === 'reader') $('backBtn').click(); });
+
+    // 直接用 #S-144 開啟時
+    if (location.hash.length > 1) {
+      const id = decodeURIComponent(location.hash.slice(1));
+      if (byId(id)) history.replaceState({ doc: id, deep: true }, '', location.href);
+    }
+    route({ animate: false });
+
+    /* ── 大標題捲上去後，導覽列才出現小標題與毛玻璃 ── */
+    const scroller = $('homeScroller'), bar = $('homeBar'), big = $('largeTitle');
+    let ticking = false;
+    scroller.addEventListener('scroll', () => {
+      if (ticking) return; ticking = true;
+      requestAnimationFrame(() => {
+        const y = scroller.scrollTop;
+        bar.classList.toggle('material', y > 2);
+        bar.classList.toggle('collapsed', y > big.offsetTop + big.offsetHeight - 70);
+        ticking = false;
+      });
+    }, { passive: true });
+
+    /* ── Check List 進度環 ── */
+    function refreshHero() {
+      let checked = 0, total = 30;
+      try {
+        const s = JSON.parse(localStorage.getItem(CL_KEY) || '{}');
+        checked = Object.values(s).filter(Boolean).length;
+        total = Number(localStorage.getItem(CL_KEY + ':total')) || total;
+      } catch (e) {}
+      const pct = Math.min(1, checked / total);
+      const C = 2 * Math.PI * 24;
+      const ring = $('ringValue');
+      ring.style.strokeDasharray = C;
+      ring.style.strokeDashoffset = C * (1 - pct);
+      $('ringLabel').textContent = Math.round(pct * 100) + '%';
+      const done = checked >= total;
+      $('hero').classList.toggle('done', done);
+      $('heroSub').textContent = done ? `${total} 項全部確認完成`
+        : checked ? `已確認 ${checked} / ${total} 項` : `互動版 · ${CL_SECTIONS} 個區塊 · ${total} 項`;
+      $('heroPill').textContent = done ? '查看' : checked ? '繼續' : '開始';
+    }
+    refreshHero();
+    addEventListener('storage', (e) => { if (!e.key || e.key.startsWith(CL_KEY)) refreshHero(); });
+
+    /* ── 離線快取狀態 ── */
+    async function refreshOffline() {
+      if (!('caches' in window) || !navigator.serviceWorker || !navigator.serviceWorker.controller) return;
+      try {
+        const cache = await caches.open('docs-v1');
+        const hits = await Promise.all(DOCS.map((d) => cache.match(new URL(d.file, location.href).href)));
+        const n = hits.filter(Boolean).length;
+        DOCS.forEach((d, i) => { // 全部存好時就不必每列都標示
+          const el = document.querySelector(`[data-saved="${d.id}"]`);
+          if (el) el.textContent = hits[i] && n < DOCS.length ? ' · 已存到裝置' : '';
+        });
+        $('offlineNote').textContent = n === DOCS.length
+          ? '全部文件都已存到這台裝置，沒有網路也能秒開。'
+          : n ? `已有 ${n} 份文件存到這台裝置，開過的文件下次會秒開。` : '打開過的文件會存到這台裝置，下次秒開、離線也能看。';
+      } catch (e) {}
+    }
+
+    /* ── Service Worker：快取 PDF ── */
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+      navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'cached') refreshOffline(); });
+      navigator.serviceWorker.addEventListener('controllerchange', refreshOffline);
+      refreshOffline();
+
+      // 網路不錯、沒開省流量時，閒置中把其他文件也先存好（一次一份）
+      const conn = navigator.connection || {};
+      const goodNet = !conn.saveData && (!conn.effectiveType || conn.effectiveType === '4g');
+      if (goodNet) {
+        const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1500));
+        navigator.serviceWorker.ready.then(() => setTimeout(() => idle(() => {
+          const sw = navigator.serviceWorker.controller;
+          if (sw) sw.postMessage({ type: 'warm', urls: DOCS.map((d) => d.file) });
+        }), 2500));
+      }
+    }
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>確認表單 Check List｜互動版</title>
+  <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23c8913a'/%3E%3Cpath d='M20 33l8 8 16-18' fill='none' stroke='white' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <script>if (window.self !== window.top) document.documentElement.classList.add('embedded');</script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      color-scheme: light dark;
+      --bg: #f2f2f7;
+      --card: #ffffff;
+      --label: #1d1d1f;
+      --label2: rgba(60, 60, 67, .62);
+      --label3: rgba(60, 60, 67, .32);
+      --sep: rgba(60, 60, 67, .18);
+      --press: rgba(60, 60, 67, .10);
+      --fill: rgba(120, 120, 128, .14);
+      --tint: #98631a;
+      --tint-strong: #c8913a;
+      --tint-fill: rgba(200, 145, 58, .14);
+      --green: #248a3d;
+      --green-strong: #34c759;
+      --red: #d70015;
+      --bar: rgba(242, 242, 247, .78);
+      --shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06);
+      --ease: cubic-bezier(.32, .72, 0, 1);
+      --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #000000; --card: #1c1c1e; --label: #f5f5f7;
+        --label2: rgba(235, 235, 245, .62); --label3: rgba(235, 235, 245, .30);
+        --sep: rgba(84, 84, 88, .55); --press: rgba(255, 255, 255, .08); --fill: rgba(120, 120, 128, .26);
+        --tint: #e6b76a; --tint-strong: #d9a24c; --tint-fill: rgba(230, 183, 106, .16);
+        --green: #30d158; --green-strong: #30d158; --red: #ff453a;
+        --bar: rgba(18, 18, 20, .74); --shadow: none;
+      }
+    }
+    html, body { height: 100%; }
+    body {
+      background: var(--bg); color: var(--label);
+      font: 17px/1.5 var(--font);
+      -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+    button, a { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-decoration: none; touch-action: manipulation; }
+    :focus-visible { outline: 3px solid var(--tint-strong); outline-offset: 2px; border-radius: 10px; }
+    .app { height: 100%; display: flex; flex-direction: column; }
+
+    /* ── 上方：標題 + 總進度 ── */
+    .top {
+      flex: none; z-index: 2;
+      padding: env(safe-area-inset-top) max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left));
+      background: var(--bar);
+      -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+      box-shadow: 0 .5px 0 var(--sep);
+    }
+    .top-row { height: 52px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+    .embedded .top-row { display: none; }
+    .embedded .top { padding-top: 12px; background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+    .back { justify-self: start; display: inline-flex; align-items: center; gap: 4px; height: 44px; margin-left: -8px; padding: 0 8px; color: var(--tint); }
+    .back svg { width: 12px; height: 20px; }
+    .title { font-size: 17px; font-weight: 600; white-space: nowrap; }
+    .progress-row { max-width: 760px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+    .count { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .count small { font-size: 15px; font-weight: 400; color: var(--label2); }
+    .track { flex: 1; height: 6px; border-radius: 3px; background: var(--fill); overflow: hidden; }
+    .fill { height: 100%; width: 100%; border-radius: 3px; background: var(--tint-strong); transform-origin: left; transform: scaleX(0); transition: transform .5s var(--ease), background-color .3s; }
+    .all-done .fill { background: var(--green-strong); }
+    .text-btn { color: var(--tint); font-size: 15px; padding: 6px 4px; }
+    .text-btn:active { opacity: .45; }
+
+    /* ── 區塊分頁（原生捲動 + 吸附 = 系統級的慣性手感）── */
+    .pager {
+      flex: 1; display: flex; overflow-x: auto; overflow-y: hidden;
+      scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none;
+    }
+    .pager::-webkit-scrollbar { display: none; }
+    .slide {
+      flex: 0 0 100%; height: 100%; scroll-snap-align: start; scroll-snap-stop: always;
+      overflow-y: auto; overscroll-behavior-y: contain;
+      padding: 20px max(16px, env(safe-area-inset-right)) 28px max(16px, env(safe-area-inset-left));
+    }
+    .sheet { max-width: 760px; margin: 0 auto; }
+    .head { padding: 4px 4px 14px; }
+    .meta { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--label2); font-variant-numeric: tabular-nums; }
+    .phase { padding: 2px 9px; border-radius: 999px; background: var(--tint-fill); color: var(--tint); font-weight: 600; }
+    .head h1 { font-size: 28px; line-height: 1.2; font-weight: 700; letter-spacing: -.01em; margin-top: 8px; }
+    .head .tag { font-size: 13px; color: var(--label2); margin-top: 4px; letter-spacing: .02em; }
+
+    .list { list-style: none; background: var(--card); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); }
+    .item {
+      position: relative; display: flex; align-items: flex-start; gap: 14px;
+      padding: 14px 16px; cursor: pointer; transition: background-color .25s;
+      -webkit-user-select: none; user-select: none;
+    }
+    .item:active { background: var(--press); transition: none; }
+    .list li + li .item::before { content: ""; position: absolute; top: 0; right: 0; left: 54px; height: .5px; background: var(--sep); }
+    .item input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+    .circle {
+      flex: none; width: 24px; height: 24px; margin-top: 1px; border-radius: 50%;
+      border: 2px solid var(--label3); display: grid; place-items: center;
+      transition: background-color .2s, border-color .2s;
+    }
+    .circle svg { width: 13px; height: 13px; color: #fff; opacity: 0; transform: scale(.4); transition: opacity .15s, transform .35s cubic-bezier(.34, 1.56, .64, 1); }
+    .item input:checked + .circle { background: var(--tint-strong); border-color: var(--tint-strong); animation: pop .35s var(--ease); }
+    .item input:checked + .circle svg { opacity: 1; transform: none; }
+    .item input:focus-visible + .circle { outline: 3px solid var(--tint-strong); outline-offset: 2px; }
+    @keyframes pop { 40% { transform: scale(.82); } 100% { transform: scale(1); } }
+    .text { font-size: 16px; line-height: 1.55; transition: color .2s; }
+    .item input:checked ~ .text { color: var(--label2); }
+
+    .foot { padding: 10px 16px 0; font-size: 13px; color: var(--label2); min-height: 2em; font-variant-numeric: tabular-nums; }
+    .foot.ok { color: var(--green); font-weight: 600; }
+
+    /* 完成頁 */
+    .finish { min-height: 100%; display: grid; place-items: center; align-content: center; text-align: center; gap: 10px; }
+    .badge { width: 88px; height: 88px; border-radius: 50%; background: var(--green-strong); color: #fff; display: grid; place-items: center; margin-bottom: 8px; }
+    .badge svg { width: 44px; height: 44px; }
+    .finish h1 { font-size: 34px; font-weight: 700; letter-spacing: -.01em; }
+    .finish p { color: var(--label2); font-size: 16px; max-width: 26em; }
+    .finish .btns { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; min-width: 220px; }
+    .btn-filled { padding: 13px 22px; border-radius: 14px; background: var(--tint-strong); color: #fff; font-weight: 600; }
+    .btn-plain { padding: 11px 22px; color: var(--red); }
+    .btn-filled:active, .btn-plain:active { opacity: .6; }
+
+    /* ── 下方：頁面控制 ── */
+    .bottom {
+      flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 6px max(8px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+      background: var(--bar);
+      -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+      box-shadow: 0 -.5px 0 var(--sep);
+    }
+    .nav-btn { height: 44px; min-width: 88px; padding: 0 10px; display: inline-flex; align-items: center; gap: 4px; color: var(--tint); font-size: 16px; border-radius: 10px; }
+    .nav-btn.next { justify-content: flex-end; }
+    .nav-btn:active { opacity: .45; }
+    .nav-btn:disabled { color: var(--label3); cursor: default; }
+    .nav-btn svg { width: 10px; height: 16px; }
+    .dots { display: flex; gap: 2px; }
+    .dot { width: 22px; height: 28px; display: grid; place-items: center; }
+    .dot i { width: 8px; height: 8px; border-radius: 50%; background: var(--label3); transition: background-color .25s, transform .25s var(--ease); }
+    .dot.done i { background: color-mix(in srgb, var(--green-strong) 55%, transparent); }
+    .dot.cur i { background: var(--label); transform: scale(1.15); }
+    .dot.done.cur i { background: var(--green-strong); }
+    @media (max-width: 420px) { .dot { width: 16px; } .nav-btn { min-width: 64px; } .nav-btn span { display: none; } }
+
+    @media (prefers-reduced-motion: reduce) {
+      .circle, .circle svg, .fill, .dot i { transition: none; animation: none !important; }
+    }
+    @media (prefers-reduced-transparency: reduce) {
+      .top, .bottom { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+    }
+    @media (prefers-contrast: more) {
+      :root { --label2: var(--label); --label3: var(--label2); }
+      .list { outline: 1px solid var(--label3); }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" id="app">
+    <header class="top">
+      <div class="top-row">
+        <a class="back" href="./">
+          <svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>
+          媒體部門
+        </a>
+        <div class="title">確認表單 Check List</div>
+      </div>
+      <div class="progress-row">
+        <div class="count" id="count">0 <small>/ 30 已確認</small></div>
+        <div class="track" role="progressbar" aria-label="總進度" id="track"><div class="fill" id="fill"></div></div>
+        <button class="text-btn" id="resetBtn" type="button">重設</button>
+      </div>
+    </header>
+
+    <section class="pager" id="pager" aria-label="Check List 區塊" tabindex="-1"></section>
+
+    <nav class="bottom" aria-label="區塊切換">
+      <button class="nav-btn" id="prevBtn" type="button" aria-label="上一區">
+        <svg viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2 2 8l6 6"/></svg><span>上一區</span>
+      </button>
+      <div class="dots" id="dots"></div>
+      <button class="nav-btn next" id="nextBtn" type="button" aria-label="下一區">
+        <span>下一區</span><svg viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 6 6-6 6"/></svg>
+      </button>
+    </nav>
+  </main>
+
+  <script>
+    const sections = [
+      { title: "聚會前｜環境與設備啟動", tag: "Before Meeting", items: [
+        "消毒",
+        "開啟電源（牆壁上）",
+        "下到上依序開啟（擴大機 ➡️ 混音器 ➡️ 無線麥克風主機 ➡️ 電腦）"
+      ]},
+      { title: "聚會前｜下載與準備多媒體", tag: "Media Prep", items: [
+        "在 JW Library 下載《傳道與生活聚會手冊》或《守望台》文章中，聚會上需要播放的多媒體檔案。",
+        "確認已下載公眾演講的講者選擇的歌曲。",
+        "如果多媒體列表是從 JW Hub 下載，開啟多媒體播放列表，下載或導入列表裡的所有視頻。",
+        "如果使用個人播放列表，建立或導入播放列表，並確認所有視頻都已下載。"
+      ]},
+      { title: "聚會前｜播放測試與音訊確認", tag: "Playback Test", items: [
+        "嘗試播放在聚會中使用的每個圖片和視頻（在出版物或播放列表中），確保每個下載的項目都可以正常播放。",
+        "跟每位講者確定在什麼時候播放圖片和視頻。",
+        "測試所有麥克風，確定音質、音量（與負責講台的弟兄一起）",
+        "確認走道間以及廁所是否有聲音"
+      ]},
+      { title: "聚會前｜講台弟兄", tag: "Stage Brother", items: [
+        "請留意示範麥克風擺放方向",
+        "與公眾演講講者確認麥克風高度",
+        "預先調好誦讀弟兄麥克風"
+      ]},
+      { title: "聚會前｜麥克風傳遞員", tag: "Mic Runner", items: [
+        "請最後確認無線麥克風電量"
+      ]},
+      { title: "聚會前｜Zoom 與線上參與者", tag: "Zoom Check", items: [
+        "開啟線上會議，讓需要的人加入",
+        "確定在 Zoom 裡，從媒體播放器電腦到混音器的音頻連接是設置正確的，而且運行正常。",
+        "確定在 Zoom 裡選取了正確的攝影設備，而且運行正常。不要傳送講台的影像，要等到聚會快要開始才傳送。不應該播放王國聚會所裡聽眾的影像。",
+        "確認有節目的人都到了。如果不在現場，確認是否在線上",
+        "確定每個參與節目的人，他們的影像畫面適當，而且麥克風的聲音良好。如果可能，就進行音頻測試，但測試的方式不要打斷聚會所會堂內的談話。",
+        "在聚會開始前的1分鐘，視頻控制員應該使所有視頻會議的參與人員靜音。他應該取消「允許參會者自我解除（容許與會者自行解除）靜音」這個選擇。對於混合聚會，聚會進行期間必須這樣安排。"
+      ]},
+      { title: "聚會中｜音控", tag: "During · Audio", items: [
+        "播放唱詩的音樂時，音量不該太小，讓人無法全情投入；也不該太大，以致蓋過大家的歌聲。",
+        "留意講者提到播放圖片影片的時機",
+        "留意是否需要關閉線上聚會參與者的視頻音頻",
+        "隨時留意麥克風音量是否需要調整，善用 HIGH, MID, LOW 旋鈕調整音質"
+      ]},
+      { title: "聚會中｜講台弟兄", tag: "During · Stage", items: [
+        "留意麥克風高度",
+        "留意示範麥克風擺放方向"
+      ]},
+      { title: "聚會中｜麥克風傳遞員", tag: "During · Mic", items: [
+        "保護無線麥克風，請勿將麥克風放置在容易掉落的地方，如椅子上。",
+        "留意是否有問答討論的環節",
+        "確認評論的人是否有聲音，並隨時支援"
+      ]}
+    ];
+
+    const STORAGE_KEY = 'media-dept-interactive-checklist-v1'; // 沿用舊的 key，原本的勾選進度會保留
+    const $ = (id) => document.getElementById(id);
+    const pager = $('pager'), dots = $('dots');
+    const totalItems = sections.reduce((n, s) => n + s.items.length, 0);
+    const pageCount = sections.length + 1; // 最後一頁是「全部完成」
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
+    const store = {
+      load() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch (e) { return {}; } },
+      save(s) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch (e) {} },
+      clear() { try { localStorage.removeItem(STORAGE_KEY); } catch (e) {} },
+    };
+    try { localStorage.setItem(STORAGE_KEY + ':total', String(totalItems)); } catch (e) {}
+    let state = store.load();
+
+    const itemId = (s, i) => `s${s}-i${i}`;
+    const esc = (str) => String(str).replace(/[&<>'"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
+    const doneIn = (s) => sections[s].items.filter((_, i) => state[itemId(s, i)]).length;
+    const isComplete = (s) => doneIn(s) === sections[s].items.length;
+    const CHECK = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m2.5 7.5 3 3 6-7"/></svg>';
+
+    function render() {
+      pager.innerHTML = sections.map((sec, s) => {
+        const [phase, name] = sec.title.includes('｜') ? sec.title.split('｜') : ['', sec.title];
+        return `
+        <article class="slide" data-index="${s}" aria-label="區塊 ${s + 1}：${esc(sec.title)}">
+          <div class="sheet">
+            <div class="head">
+              <div class="meta">${phase ? `<span class="phase">${esc(phase)}</span>` : ''}<span>${s + 1} / ${sections.length}</span></div>
+              <h1>${esc(name)}</h1>
+              <div class="tag">${esc(sec.tag)}</div>
+            </div>
+            <ul class="list">
+              ${sec.items.map((item, i) => {
+                const id = itemId(s, i);
+                return `<li><label class="item">
+                  <input type="checkbox" data-section="${s}" data-id="${id}" ${state[id] ? 'checked' : ''}>
+                  <span class="circle" aria-hidden="true">${CHECK}</span>
+                  <span class="text">${esc(item)}</span>
+                </label></li>`;
+              }).join('')}
+            </ul>
+            <p class="foot" id="foot-${s}"></p>
+          </div>
+        </article>`;
+      }).join('') + `
+        <article class="slide" data-index="${sections.length}" aria-label="全部完成">
+          <div class="finish">
+            <div class="badge">${CHECK.replace('stroke-width="2.4"', 'stroke-width="2"')}</div>
+            <h1 id="finishTitle">全部完成</h1>
+            <p id="finishText"></p>
+            <div class="btns">
+              <button class="btn-filled" type="button" data-goto="0">回到第一區</button>
+              <button class="btn-plain" type="button" data-reset>重設所有勾選</button>
+            </div>
+          </div>
+        </article>`;
+
+      dots.innerHTML = Array.from({ length: pageCount }, (_, i) =>
+        `<button class="dot" type="button" data-goto="${i}" aria-label="${i < sections.length ? '區塊 ' + (i + 1) : '完成頁'}"><i></i></button>`).join('');
+      updateProgress();
+      updateCurrent();
+    }
+
+    function updateProgress() {
+      const checked = Object.values(state).filter(Boolean).length;
+      $('count').innerHTML = `${checked} <small>/ ${totalItems} 已確認</small>`;
+      $('fill').style.transform = `scaleX(${checked / totalItems})`;
+      $('track').setAttribute('aria-valuenow', Math.round(checked / totalItems * 100));
+      $('app').classList.toggle('all-done', checked === totalItems);
+      sections.forEach((sec, s) => {
+        const n = doneIn(s), el = $('foot-' + s);
+        const ok = n === sec.items.length;
+        el.textContent = ok ? '✓ 這一區完成了' : `${n} / ${sec.items.length} · 全部勾選後會自動前往下一區`;
+        el.classList.toggle('ok', ok);
+        dots.children[s] && dots.children[s].classList.toggle('done', ok);
+      });
+      const left = totalItems - checked;
+      $('finishTitle').textContent = left ? '快完成了' : '全部完成';
+      $('finishText').textContent = left
+        ? `還有 ${left} 個項目沒有勾選，可以點下方的圓點回去補上。`
+        : `所有 ${totalItems} 個項目都已確認。若要重新操作，請按「重設所有勾選」。`;
+    }
+
+    /* 目前在第幾頁：永遠從捲動位置推算，按鈕、滑動、鍵盤都不會互相打架 */
+    let current = 0;
+    const indexNow = () => Math.round(pager.scrollLeft / Math.max(pager.clientWidth, 1));
+    function updateCurrent() {
+      current = Math.max(0, Math.min(pageCount - 1, indexNow()));
+      [...dots.children].forEach((d, i) => { d.classList.toggle('cur', i === current); d.setAttribute('aria-current', i === current ? 'step' : 'false'); });
+      $('prevBtn').disabled = current === 0;
+      $('nextBtn').disabled = current === pageCount - 1;
+    }
+    function goTo(i) {
+      i = Math.max(0, Math.min(pageCount - 1, i));
+      pager.scrollTo({ left: i * pager.clientWidth, behavior: reduceMotion.matches ? 'auto' : 'smooth' });
+    }
+
+    let raf = 0;
+    pager.addEventListener('scroll', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(updateCurrent); }, { passive: true });
+    addEventListener('resize', () => { const i = current; requestAnimationFrame(() => { pager.scrollLeft = i * pager.clientWidth; updateCurrent(); }); });
+
+    let advanceTimer = 0;
+    pager.addEventListener('change', (e) => {
+      const input = e.target;
+      if (!input.matches('input[type="checkbox"]')) return;
+      if (input.checked) state[input.dataset.id] = true; else delete state[input.dataset.id];
+      store.save(state);
+      if (input.checked && navigator.vibrate) navigator.vibrate(8);
+      updateProgress();
+      clearTimeout(advanceTimer);
+      const s = Number(input.dataset.section);
+      if (input.checked && isComplete(s)) {
+        // 停一下讓人看到「這一區完成了」，再滑到下一區
+        advanceTimer = setTimeout(() => { if (isComplete(s) && current === s) goTo(s + 1); }, 650);
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      const g = e.target.closest('[data-goto]');
+      if (g) goTo(Number(g.dataset.goto));
+      if (e.target.closest('[data-reset]')) reset();
+    });
+    $('prevBtn').addEventListener('click', () => goTo(current - 1));
+    $('nextBtn').addEventListener('click', () => goTo(current + 1));
+    $('resetBtn').addEventListener('click', reset);
+
+    function reset() {
+      if (!confirm('要清除所有勾選嗎？此動作無法復原。')) return;
+      state = {};
+      store.clear();
+      render();
+      goTo(0);
+    }
+
+    addEventListener('keydown', (e) => {
+      if (e.target.matches && e.target.matches('input, textarea')) return;
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); goTo(current + 1); }
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); goTo(current - 1); }
+    });
+
+    // 另一個分頁改了勾選 → 同步
+    addEventListener('storage', (e) => { if (e.key === STORAGE_KEY) { state = store.load(); const i = current; render(); pager.scrollLeft = i * pager.clientWidth; updateCurrent(); } });
+
+    render();
+    // 打開時直接跳到第一個還沒完成的區塊
+    const firstOpen = sections.findIndex((_, s) => !isComplete(s));
+    const start = firstOpen === -1 ? sections.length : firstOpen;
+    requestAnimationFrame(() => { pager.scrollLeft = start * pager.clientWidth; updateCurrent(); });
+  </script>
+</body>
+</html>
