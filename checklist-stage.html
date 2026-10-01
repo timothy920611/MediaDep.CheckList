@@ -37,6 +37,8 @@
       --top: 64px;        /* 上方總進度列的高度（JS 會量） */
       --gutter: 16px;     /* 左右留白（JS 依視窗寬度計算，內容最寬 760px） */
       --accent: #af52de;  /* 這個職責的代表色（首頁卡片同色） */
+      --hl: rgba(255, 204, 0, .45);       /* 螢光筆 */
+      --hl-done: rgba(255, 204, 0, .14);
     }
     @media (prefers-color-scheme: dark) {
       :root {
@@ -47,6 +49,7 @@
         --green: #30d158; --green-strong: #30d158; --red: #ff453a;
         --bar: rgba(18, 18, 20, .88); --shadow: none;
         --accent: #bf5af2;
+        --hl: rgba(255, 214, 10, .34); --hl-done: rgba(255, 214, 10, .1);
       }
     }
     html { scroll-padding-top: var(--top); overflow-x: clip; }
@@ -159,6 +162,15 @@
     @keyframes pop { 40% { transform: scale(.82); } 100% { transform: scale(1); } }
     .text { font-size: 16px; line-height: 1.55; transition: color .2s; }
     .item input:checked ~ .text { color: var(--label2); }
+    /* 項目重點：**粗體** = 要做的事；==螢光筆== = 時機、順序、不能做的事 */
+    .text b { font-weight: 700; }
+    .text mark {
+      color: inherit; padding: 0 .12em; border-radius: 3px;
+      background: linear-gradient(transparent 50%, var(--hl) 50%);
+      -webkit-box-decoration-break: clone; box-decoration-break: clone;
+      transition: background-color .2s;
+    }
+    .item input:checked ~ .text mark { background: linear-gradient(transparent 50%, var(--hl-done) 50%); }
 
     .foot { padding: 10px 16px 0; font-size: 13px; color: var(--label2); min-height: 2em; font-variant-numeric: tabular-nums; }
     .sec.complete .foot { color: var(--green); font-weight: 600; }
@@ -248,13 +260,13 @@
     // key 固定不變：之後增減項目，已勾選的進度也不會錯位
     const sections = [
       { key: 'stage-before', phase: '聚會前', title: '聚會前準備', tag: 'Stage · Before', items: [
-        "請留意示範麥克風擺放方向",
-        "與公眾演講講者確認麥克風高度",
-        "預先調好誦讀弟兄麥克風"
+        "請留意**示範麥克風擺放方向**",
+        "與公眾演講講者確認**麥克風高度**",
+        "**預先調好**誦讀弟兄麥克風"
       ]},
       { key: 'stage-during', phase: '聚會中', title: '聚會中留意', tag: 'Stage · During', items: [
-        "留意麥克風高度",
-        "留意示範麥克風擺放方向"
+        "留意**麥克風高度**",
+        "留意**示範麥克風擺放方向**"
       ]}
     ];
 
@@ -295,6 +307,8 @@
     const esc = (str) => String(str).replace(/[&<>'"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
     const doneIn = (s) => sections[s].items.filter((_, i) => state[itemId(s, i)]).length;
     const isComplete = (s) => doneIn(s) === sections[s].items.length;
+    // **粗體**、==螢光筆==（先跳脫再轉換，項目文字仍不能放 HTML）
+    const fmt = (str) => esc(str).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/==(.+?)==/g, '<mark>$1</mark>');
     const CHECK = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m2.5 7.5 3 3 6-7"/></svg>';
 
     function render() {
@@ -313,7 +327,7 @@
               return `<li><label class="item">
                 <input type="checkbox" data-section="${s}" data-id="${id}" ${state[id] ? 'checked' : ''}>
                 <span class="circle" aria-hidden="true">${CHECK}</span>
-                <span class="text">${esc(item)}</span>
+                <span class="text">${fmt(item)}</span>
               </label></li>`;
             }).join('')}
           </ul>
