@@ -132,6 +132,7 @@
       padding: 18px; border-radius: 22px; background: var(--card); box-shadow: var(--shadow);
       transition: transform .12s ease-out, background-color .12s;
     }
+    .hero + .hero { margin-top: 12px; }
     .hero:active { transform: scale(.98); background: color-mix(in srgb, var(--card) 92%, var(--label)); }
     .ring { width: 56px; height: 56px; position: relative; }
     .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
@@ -253,16 +254,27 @@
             <p>聚會前後的確認清單與影音指南</p>
           </div>
 
-          <a class="hero" id="hero" href="checklist-interactive.html" data-id="checklist">
+          <a class="hero" href="checklist-interactive.html" data-id="checklist">
             <div class="ring" aria-hidden="true">
-              <svg viewBox="0 0 56 56"><circle class="track" cx="28" cy="28" r="24"/><circle class="value" id="ringValue" cx="28" cy="28" r="24"/></svg>
-              <b id="ringLabel">0%</b>
+              <svg viewBox="0 0 56 56"><circle class="track" cx="28" cy="28" r="24"/><circle class="value" cx="28" cy="28" r="24"/></svg>
+              <b>0%</b>
             </div>
             <div class="hero-text">
               <h2>確認表單 Check List</h2>
-              <p id="heroSub">互動版 · 5 個區塊</p>
+              <p class="hero-sub">互動版 · 5 個區塊</p>
             </div>
-            <span class="pill" id="heroPill">開始</span>
+            <span class="pill">開始</span>
+          </a>
+          <a class="hero" href="checklist-stage-mic.html" data-id="stage-mic">
+            <div class="ring" aria-hidden="true">
+              <svg viewBox="0 0 56 56"><circle class="track" cx="28" cy="28" r="24"/><circle class="value" cx="28" cy="28" r="24"/></svg>
+              <b>0%</b>
+            </div>
+            <div class="hero-text">
+              <h2>講台與麥克風</h2>
+              <p class="hero-sub">互動版 · 4 個區塊</p>
+            </div>
+            <span class="pill">開始</span>
           </a>
 
           <h2 class="group-header">參考文件</h2>
@@ -325,9 +337,10 @@
       { id: 'S-261',    file: 'S-261_CH.pdf',    title: '混合聚會的影音指南',             pages: 8,  bytes: 427199,  tile: '#34c759', glyph: 'people' },
       { id: 'zoominst', file: 'zoominst_CH.pdf', title: 'Zoom 線上視頻會議指示', label: 'Zoom', pages: 14, bytes: 555270, tile: '#007aff', glyph: 'video' },
     ];
-    const CHECKLIST = { id: 'checklist', file: 'checklist-interactive.html', title: '確認表單 Check List' };
-    const CL_KEY = 'media-dept-interactive-checklist-v2';
-    const CL_SECTIONS = 5;
+    const CHECKLISTS = [
+      { id: 'checklist', file: 'checklist-interactive.html', title: '確認表單 Check List',     key: 'media-dept-interactive-checklist-v2', sections: 5, total: 21 },
+      { id: 'stage-mic', file: 'checklist-stage-mic.html',   title: '講台與麥克風',            key: 'media-dept-stage-mic-checklist-v1',   sections: 4, total: 9 },
+    ];
 
     const GLYPHS = {
       play:    '<path d="M8 5.5v13l10-6.5z" fill="currentColor"/>',
@@ -347,7 +360,7 @@
 
     const mb = (b) => b >= 1e6 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB';
     const isHtml = (d) => d.file.endsWith('.html');
-    const byId = (id) => id === CHECKLIST.id ? CHECKLIST : DOCS.find((d) => d.id === id);
+    const byId = (id) => CHECKLISTS.find((c) => c.id === id) || DOCS.find((d) => d.id === id);
 
     /* ── 文件列表 ── */
     $('docList').innerHTML = DOCS.map((d) => `
@@ -469,26 +482,29 @@
 
     /* ── Check List 進度環 ── */
     function refreshHero() {
-      let checked = 0, total = 21;
-      try {
-        const s = JSON.parse(localStorage.getItem(CL_KEY) || '{}');
-        checked = Object.values(s).filter(Boolean).length;
-        total = Number(localStorage.getItem(CL_KEY + ':total')) || total;
-      } catch (e) {}
-      const pct = Math.min(1, checked / total);
-      const C = 2 * Math.PI * 24;
-      const ring = $('ringValue');
-      ring.style.strokeDasharray = C;
-      ring.style.strokeDashoffset = C * (1 - pct);
-      $('ringLabel').textContent = Math.round(pct * 100) + '%';
-      const done = checked >= total;
-      $('hero').classList.toggle('done', done);
-      $('heroSub').textContent = done ? `${total} 項全部確認完成`
-        : checked ? `已確認 ${checked} / ${total} 項` : `互動版 · ${CL_SECTIONS} 個區塊 · ${total} 項`;
-      $('heroPill').textContent = done ? '查看' : checked ? '繼續' : '開始';
+      CHECKLISTS.forEach((cl) => {
+        let checked = 0, total = cl.total;
+        try {
+          const s = JSON.parse(localStorage.getItem(cl.key) || '{}');
+          checked = Object.values(s).filter(Boolean).length;
+          total = Number(localStorage.getItem(cl.key + ':total')) || total;
+        } catch (e) {}
+        const hero = document.querySelector(`.hero[data-id="${cl.id}"]`);
+        const pct = Math.min(1, checked / total);
+        const C = 2 * Math.PI * 24;
+        const ring = hero.querySelector('.ring .value');
+        ring.style.strokeDasharray = C;
+        ring.style.strokeDashoffset = C * (1 - pct);
+        hero.querySelector('.ring b').textContent = Math.round(pct * 100) + '%';
+        const done = checked >= total;
+        hero.classList.toggle('done', done);
+        hero.querySelector('.hero-sub').textContent = done ? `${total} 項全部確認完成`
+          : checked ? `已確認 ${checked} / ${total} 項` : `互動版 · ${cl.sections} 個區塊 · ${total} 項`;
+        hero.querySelector('.pill').textContent = done ? '查看' : checked ? '繼續' : '開始';
+      });
     }
     refreshHero();
-    addEventListener('storage', (e) => { if (!e.key || e.key.startsWith(CL_KEY)) refreshHero(); });
+    addEventListener('storage', (e) => { if (!e.key || CHECKLISTS.some((cl) => e.key.startsWith(cl.key))) refreshHero(); });
 
     /* ── 離線快取狀態 ── */
     async function refreshOffline() {
