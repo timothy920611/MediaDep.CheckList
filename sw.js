@@ -4,13 +4,13 @@
  * - HTML：優先抓網路（確保拿到最新版），沒網路才用快取。
  * 更新網站外觀後，把 SHELL_VERSION 改一下即可。
  */
-const SHELL_VERSION = 'shell-2026-10-02b';
+const SHELL_VERSION = 'shell-2026-10-02c';
 const DOC_CACHE = 'docs-v1';
 const SHELL_FILES = ['./', './index.html', './checklist-interactive.html', './checklist-stage.html', './checklist-mic.html'];
 
 // 已存到裝置的 PDF（同步查得到，fetch 時要當下決定要不要接手）
 const cachedKeys = new Set();
-caches.open(DOC_CACHE).then((c) => c.keys()).then((reqs) => reqs.forEach((r) => cachedKeys.add(r.url))).catch(() => {});
+const keysLoaded = caches.open(DOC_CACHE).then((c) => c.keys()).then((reqs) => reqs.forEach((r) => cachedKeys.add(r.url))).catch(() => {});
 
 const jobs = new Map(); // url -> { done, ctrl }（避免同一份 PDF 同時下載兩次）
 const queue = [];       // 等著背景預載的文件
@@ -81,6 +81,7 @@ async function pump() {
   if (pumping) return;
   pumping = true;
   try {
+    await keysLoaded; // Service Worker 剛啟動時清單還在讀，先等讀完才知道哪些已經存了
     while (queue.length) {
       const wait = pausedUntil - Date.now();
       if (wait > 0) { await new Promise((r) => setTimeout(r, wait)); continue; }

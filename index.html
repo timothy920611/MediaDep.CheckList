@@ -220,14 +220,6 @@
     .loader strong { font-size: 17px; font-weight: 600; }
     .loader span { font-size: 13px; color: var(--label2); font-variant-numeric: tabular-nums; }
 
-    .fallback { display: none; }
-    .fallback.on { display: grid; }
-    .btn-filled {
-      margin-top: 6px; padding: 12px 22px; border-radius: 999px;
-      background: var(--tint-strong); color: #fff; font-weight: 600; font-size: 16px;
-    }
-    .btn-filled:active { opacity: .7; }
-
     /* ─── Accessibility ─── */
     @media (prefers-reduced-motion: reduce) {
       .view { transition: opacity .2s ease, visibility 0s linear .2s !important; transform: none !important; }
@@ -309,11 +301,6 @@
           <strong id="loaderTitle">正在開啟</strong>
           <span id="loaderMeta"></span>
         </div>
-        <div class="loader fallback" id="fallback">
-          <strong>這個瀏覽器無法直接顯示 PDF</strong>
-          <span>改用新分頁開啟，或直接下載。</span>
-          <a class="btn-filled" id="fallbackOpen" href="#" target="_blank" rel="noopener">在新分頁開啟</a>
-        </div>
       </div>
     </section>
   </div>
@@ -350,7 +337,7 @@
 
     const $ = (id) => document.getElementById(id);
     const app = $('app'), home = $('home'), reader = $('reader');
-    const viewer = $('viewer'), loader = $('loader'), fallback = $('fallback');
+    const viewer = $('viewer'), loader = $('loader');
 
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     // iOS 的 iframe 只會顯示 PDF 第一頁；Android 沒有內建 PDF 檢視器 → 直接交給系統開
@@ -410,14 +397,12 @@
       clearTimeout(unloadTimer); clearTimeout(loadTimer);
       $('readerTitle').textContent = doc.title;
       $('openBtn').href = doc.file;
-      $('fallbackOpen').href = doc.file;
       $('downloadBtn').href = doc.file;
       $('downloadBtn').setAttribute('download', doc.file);
       $('downloadBtn').hidden = isHtml(doc);
       $('openBtn').hidden = isHtml(doc);
       $('loaderTitle').textContent = '正在開啟 ' + (doc.label || doc.id || '');
       $('loaderMeta').textContent = doc.bytes ? `${doc.pages} 頁 · ${mb(doc.bytes)}` : '';
-      fallback.classList.remove('on');
 
       // 每次換一個新的 iframe：不會在瀏覽紀錄裡留下多餘的「上一頁」
       if (!frame || frame.dataset.src !== doc.file) {
