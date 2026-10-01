@@ -395,22 +395,6 @@
       openDoc(doc);
     });
 
-    /* ── 預先載入：滑鼠移過去 / 手指按下的那一刻就開始下載 ── */
-    const warmed = new Set();
-    function warm(urls) {
-      urls = urls.filter((u) => !warmed.has(u));
-      if (!urls.length) return;
-      urls.forEach((u) => warmed.add(u));
-      const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
-      if (sw) sw.postMessage({ type: 'warm', urls });
-      else urls.forEach((u) => fetch(u, { priority: 'low' }).then((r) => r.blob()).catch(() => {}));
-    }
-    ['pointerenter', 'pointerdown', 'focusin'].forEach((type) =>
-      $('docList').addEventListener(type, (e) => {
-        const a = e.target.closest && e.target.closest('a[data-id]');
-        if (a) warm([a.getAttribute('href')]);
-      }, true));
-
     /* ── 導覽（支援瀏覽器返回鍵、#S-144 直接連結） ── */
     let frame = null, unloadTimer = 0, loadTimer = 0;
 
