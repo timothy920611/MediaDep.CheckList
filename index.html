@@ -207,6 +207,7 @@
 
     .viewer { position: relative; flex: 1; margin-top: calc(var(--nav-h) + env(safe-area-inset-top)); background: var(--bg); }
     .viewer iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--bg); }
+    .viewer iframe.idle { visibility: hidden; pointer-events: none; } /* 預先載好、暫時沒在看的 Check List */
 
     .loader {
       position: absolute; inset: 0; z-index: 2;
@@ -219,14 +220,6 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .loader strong { font-size: 17px; font-weight: 600; }
     .loader span { font-size: 13px; color: var(--label2); font-variant-numeric: tabular-nums; }
-
-    .fallback { display: none; }
-    .fallback.on { display: grid; }
-    .btn-filled {
-      margin-top: 6px; padding: 12px 22px; border-radius: 999px;
-      background: var(--tint-strong); color: #fff; font-weight: 600; font-size: 16px;
-    }
-    .btn-filled:active { opacity: .7; }
 
     /* ─── Accessibility ─── */
     @media (prefers-reduced-motion: reduce) {
@@ -309,11 +302,6 @@
           <strong id="loaderTitle">正在開啟</strong>
           <span id="loaderMeta"></span>
         </div>
-        <div class="loader fallback" id="fallback">
-          <strong>這個瀏覽器無法直接顯示 PDF</strong>
-          <span>改用新分頁開啟，或直接下載。</span>
-          <a class="btn-filled" id="fallbackOpen" href="#" target="_blank" rel="noopener">在新分頁開啟</a>
-        </div>
       </div>
     </section>
   </div>
@@ -350,7 +338,7 @@
 
     const $ = (id) => document.getElementById(id);
     const app = $('app'), home = $('home'), reader = $('reader');
-    const viewer = $('viewer'), loader = $('loader'), fallback = $('fallback');
+    const viewer = $('viewer'), loader = $('loader');
 
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     // iOS 的 iframe 只會顯示 PDF 第一頁；Android 沒有內建 PDF 檢視器 → 直接交給系統開
@@ -395,24 +383,27 @@
       openDoc(doc);
     });
 
-    /* ── 預先載入：滑鼠移過去 / 手指按下的那一刻就開始下載 ── */
-    const warmed = new Set();
-    function warm(urls) {
-      urls = urls.filter((u) => !warmed.has(u));
-      if (!urls.length) return;
-      urls.forEach((u) => warmed.add(u));
-      const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
-      if (sw) sw.postMessage({ type: 'warm', urls });
-      else urls.forEach((u) => fetch(u, { priority: 'low' }).then((r) => r.blob()).catch(() => {}));
-    }
-    ['pointerenter', 'pointerdown', 'focusin'].forEach((type) =>
-      $('docList').addEventListener(type, (e) => {
-        const a = e.target.closest && e.target.closest('a[data-id]');
-        if (a) warm([a.getAttribute('href')]);
-      }, true));
-
     /* ── 導覽（支援瀏覽器返回鍵、#S-144 直接連結） ── */
-    let frame = null, unloadTimer = 0, loadTimer = 0;
+    let pdfFrame = null, unloadTimer = 0, loadTimer = 0, openSeq = 0;
+    const hideLoader = () => { loader.classList.remove('on'); clearTimeout(loadTimer); };
+
+    // Check List：預先載好、關掉時只藏起來，不丟掉。
+    // 點開時內容已經畫好，不會先滑進一塊空白、再突然跳出內容（看起來像閃一下）。
+    const listFrames = new Map(); // file -> { el, ready, loaded }
+    function listFrame(doc) {
+      let f = listFrames.get(doc.file);
+      if (f) return f;
+      const el = document.createElement('iframe');
+      el.title = doc.title;
+      el.className = 'idle';
+      el.src = doc.file;
+      f = { el, loaded: false };
+      f.ready = new Promise((r) => el.addEventListener('load', () => { f.loaded = true; r(); }, { once: true }));
+      viewer.appendChild(el);
+      listFrames.set(doc.file, f);
+      return f;
+    }
+    const showListFrame = (f) => listFrames.forEach((g) => g.el.classList.toggle('idle', g !== f));
 
     function setView(name, animate) {
       app.classList.toggle('no-anim', !animate || document.hidden);
@@ -422,30 +413,45 @@
       if (!animate) requestAnimationFrame(() => requestAnimationFrame(() => app.classList.remove('no-anim')));
     }
 
-    function openDoc(doc, { animate = true, push = true } = {}) {
+    async function openDoc(doc, { animate = true, push = true } = {}) {
+      const seq = ++openSeq;
       clearTimeout(unloadTimer); clearTimeout(loadTimer);
       $('readerTitle').textContent = doc.title;
       $('openBtn').href = doc.file;
-      $('fallbackOpen').href = doc.file;
       $('downloadBtn').href = doc.file;
       $('downloadBtn').setAttribute('download', doc.file);
       $('downloadBtn').hidden = isHtml(doc);
       $('openBtn').hidden = isHtml(doc);
       $('loaderTitle').textContent = '正在開啟 ' + (doc.label || doc.id || '');
       $('loaderMeta').textContent = doc.bytes ? `${doc.pages} 頁 · ${mb(doc.bytes)}` : '';
-      fallback.classList.remove('on');
 
-      // 每次換一個新的 iframe：不會在瀏覽紀錄裡留下多餘的「上一頁」
-      if (!frame || frame.dataset.src !== doc.file) {
-        if (frame) frame.remove();
-        frame = document.createElement('iframe');
-        frame.title = doc.title;
-        frame.dataset.src = doc.file;
-        frame.src = doc.file;
-        loader.classList.add('on');
-        frame.addEventListener('load', () => { loader.classList.remove('on'); clearTimeout(loadTimer); }, { once: true });
-        loadTimer = setTimeout(() => loader.classList.remove('on'), 20000);
-        viewer.appendChild(frame);
+      if (isHtml(doc)) {
+        if (pdfFrame) { pdfFrame.remove(); pdfFrame = null; }
+        const f = listFrame(doc);
+        showListFrame(f);
+        if (f.loaded) hideLoader();
+        else {
+          loader.classList.add('on');
+          f.ready.then(() => { if (seq === openSeq) hideLoader(); });
+          loadTimer = setTimeout(hideLoader, 20000);
+          // 還沒載好：最多等 0.25 秒再滑進來，內容多半能跟著一起出現
+          await Promise.race([f.ready, new Promise((r) => setTimeout(r, 250))]);
+          if (seq !== openSeq) return;
+        }
+      } else {
+        showListFrame(null);
+        // PDF 每次換一個新的 iframe：不會在瀏覽紀錄裡留下多餘的「上一頁」，關掉後也會釋放記憶體
+        if (!pdfFrame || pdfFrame.dataset.src !== doc.file) {
+          if (pdfFrame) pdfFrame.remove();
+          pdfFrame = document.createElement('iframe');
+          pdfFrame.title = doc.title;
+          pdfFrame.dataset.src = doc.file;
+          pdfFrame.src = doc.file;
+          loader.classList.add('on');
+          pdfFrame.addEventListener('load', hideLoader, { once: true });
+          loadTimer = setTimeout(hideLoader, 20000);
+          viewer.appendChild(pdfFrame);
+        }
       }
 
       setView('reader', animate);
@@ -453,9 +459,14 @@
     }
 
     function closeDoc({ animate = true } = {}) {
+      openSeq++; // 還在等清單載入的開啟動作就不做了
       setView('home', animate);
       clearTimeout(unloadTimer);
-      unloadTimer = setTimeout(() => { if (frame) { frame.remove(); frame = null; } loader.classList.remove('on'); }, 550);
+      unloadTimer = setTimeout(() => { // 滑出去的動畫結束後才收
+        if (pdfFrame) { pdfFrame.remove(); pdfFrame = null; }
+        showListFrame(null);
+        hideLoader();
+      }, 550);
       refreshHero();
     }
 
@@ -479,6 +490,13 @@
       if (byId(id)) history.replaceState({ doc: id, deep: true }, '', location.href);
     }
     route({ animate: false });
+
+    // 先把 Check List 載好：手指按下的那一刻、或首頁閒置時
+    $('roleList').addEventListener('pointerdown', (e) => {
+      const a = e.target.closest('a[data-id]');
+      if (a) listFrame(byId(a.dataset.id));
+    }, { passive: true });
+    (window.requestIdleCallback || ((fn) => setTimeout(fn, 800)))(() => CHECKLISTS.forEach(listFrame));
 
     /* ── 大標題捲上去後，導覽列才出現小標題與毛玻璃 ── */
     const scroller = $('homeScroller'), bar = $('homeBar'), big = $('largeTitle');
