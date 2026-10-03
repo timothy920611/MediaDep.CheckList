@@ -4,7 +4,7 @@
  * - HTML：優先抓網路（確保拿到最新版），沒網路才用快取。
  * 更新網站外觀後，把 SHELL_VERSION 改一下即可。
  */
-const SHELL_VERSION = 'shell-2026-10-02e';
+const SHELL_VERSION = 'shell-2026-10-03a';
 const DOC_CACHE = 'docs-v1';
 const SHELL_FILES = ['./', './index.html', './checklist-interactive.html', './checklist-stage.html', './checklist-mic.html'];
 
